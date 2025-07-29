@@ -13,8 +13,8 @@ from sqlalchemy import create_engine
 st.set_page_config(page_title="Análisis Hípico con IA", layout="wide")
 
 # URL del repositorio de GitHub apuntando al contenido "raw".
-# ¡Actualizado con tu repositorio!
-GITHUB_RAW_URL = "https://raw.githubusercontent.com/alberto29117/horse_racing_app/main/"
+# ¡CORREGIDO para incluir la subcarpeta del repositorio!
+GITHUB_RAW_URL = "https://raw.githubusercontent.com/alberto29117/horse_racing_app/main/horse_racing_app/"
 
 # --- CARGA DE RECURSOS DESDE GITHUB (CACHEADO) ---
 
