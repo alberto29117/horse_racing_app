@@ -114,26 +114,22 @@ def check_password():
 
 def fetch_racing_data():
     """Obtiene los datos de las carreras de TheRacingAPI para el día siguiente."""
-    # Calcular la fecha de mañana
-    tomorrow = date.today() + timedelta(days=1)
-    date_str = tomorrow.strftime('%Y-%m-%d')
-
-    # Usamos el endpoint que permite especificar una fecha.
-    # Nota: El plan gratuito de la API podría no permitir el acceso a fechas futuras.
-    url = "https://the-racing-api1.p.rapidapi.com/v1/racecards"
-    params = {"date": date_str}
+    # CORRECCIÓN: Usar el endpoint '/declarations' que es el correcto para las carreras del día siguiente.
+    # Este endpoint no necesita un parámetro de fecha, ya que por defecto devuelve las de mañana.
+    url = "https://the-racing-api1.p.rapidapi.com/v1/declarations"
     
     headers = {"x-rapidapi-key": RACING_API_KEY, "x-rapidapi-host": "the-racing-api1.p.rapidapi.com"}
     
     try:
-        response = requests.get(url, headers=headers, params=params)
+        # No se necesitan parámetros 'params' para este endpoint
+        response = requests.get(url, headers=headers)
         response.raise_for_status()
+        # La estructura de la respuesta puede ser diferente, nos aseguramos de buscar 'racecards'
         return response.json().get('racecards', [])
     except requests.exceptions.RequestException as e:
         st.error(f"Error al contactar TheRacingAPI: {e}")
-        # Añadir un mensaje más específico si es un error de cliente (403/401)
         if e.response and e.response.status_code in [401, 403]:
-            st.warning("Este error puede indicar que tu plan de API no permite acceder a fechas futuras. El endpoint gratuito suele estar limitado al día de hoy.")
+            st.warning("Este error puede indicar que tu plan de API no permite acceder al endpoint de declaraciones, que es necesario para ver las carreras de mañana.")
         return []
 
 def call_gemini_api(prompt):
@@ -184,7 +180,6 @@ def run_ai_analysis(race_data):
                     runner['cuota_mercado'] = ai_data.get('perfil', {}).get('cuota_betfair', 999.0)
                     runner['swot_balance_score'] = ai_data.get('synergy_analysis', {}).get('swot_balance_score', 0)
                     
-                    # CORRECCIÓN: Manejo seguro de la lista 'analisis_forma'
                     analisis_forma_list = ai_data.get('analisis_forma', [])
                     if analisis_forma_list:
                         runner['in_running_comment'] = analisis_forma_list[0].get('comentario_in_running', '')
