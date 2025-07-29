@@ -113,23 +113,21 @@ def check_password():
     return False
 
 def fetch_racing_data():
-    """Obtiene los datos de las carreras de TheRacingAPI para el día siguiente."""
-    # CORRECCIÓN: Usar el endpoint '/declarations' que es el correcto para las carreras del día siguiente.
-    # Este endpoint no necesita un parámetro de fecha, ya que por defecto devuelve las de mañana.
-    url = "https://api.theracingapi.com/v1/racecards/free"
+    """Obtiene los datos de las carreras de TheRacingAPI para el día de HOY."""
+    # NOTA: Esta es la URL correcta para el plan gratuito a través de RapidAPI.
+    url = "https://the-racing-api1.p.rapidapi.com/v1/racecards/free"
     
-    headers = {"x-rapidapi-key": RACING_API_KEY, "x-rapidapi-host": "the-racing-api1.p.rapidapi.com"}
+    headers = {
+        "x-rapidapi-key": RACING_API_KEY,
+        "x-rapidapi-host": "the-racing-api1.p.rapidapi.com"
+    }
     
     try:
-        # No se necesitan parámetros 'params' para este endpoint
         response = requests.get(url, headers=headers)
         response.raise_for_status()
-        # La estructura de la respuesta puede ser diferente, nos aseguramos de buscar 'racecards'
         return response.json().get('racecards', [])
     except requests.exceptions.RequestException as e:
         st.error(f"Error al contactar TheRacingAPI: {e}")
-        if e.response and e.response.status_code in [401, 403]:
-            st.warning("Este error puede indicar que tu plan de API no permite acceder al endpoint de declaraciones, que es necesario para ver las carreras de mañana.")
         return []
 
 def call_gemini_api(prompt):
@@ -278,7 +276,7 @@ with tab1:
     
     col_a, col_b = st.columns(2)
     with col_a:
-        if st.button("Paso 1: Obtener Carreras de Mañana", use_container_width=True):
+        if st.button("Paso 1: Obtener Carreras de Hoy", use_container_width=True):
             with st.spinner("Obteniendo datos de TheRacingAPI..."):
                 st.session_state.race_data = fetch_racing_data()
                 if 'final_bets' in st.session_state: del st.session_state.final_bets
@@ -331,7 +329,7 @@ with tab1:
                         st.write("No hay corredores para esta carrera.")
     
     if 'final_bets' in st.session_state and st.session_state.final_bets:
-        st.subheader("Apuestas Recomendadas para Mañana")
+        st.subheader("Apuestas Recomendadas para Hoy")
         
         with st.form("bets_form"):
             for i, bet in enumerate(st.session_state.final_bets):
