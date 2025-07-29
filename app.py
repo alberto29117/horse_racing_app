@@ -116,7 +116,7 @@ def fetch_racing_data():
     """Obtiene los datos de las carreras de TheRacingAPI para el día siguiente."""
     # CORRECCIÓN: Usar el endpoint '/declarations' que es el correcto para las carreras del día siguiente.
     # Este endpoint no necesita un parámetro de fecha, ya que por defecto devuelve las de mañana.
-    url = "https://api.theracingapi.com/v1/racecards/free?day=today"
+    url = "https://api.theracingapi.com/v1/racecards/free"
     
     headers = {"x-rapidapi-key": RACING_API_KEY, "x-rapidapi-host": "the-racing-api1.p.rapidapi.com"}
     
