@@ -150,8 +150,15 @@ def run_ai_analysis(race_data):
             runner['jockey_name'] = runner.pop('jockey', 'Unknown')
             runner['trainer_name'] = runner.pop('trainer', 'Unknown')
             
-            runner_info = {k: runner.get(k, 'N/A') for k in ['horse', 'jockey_name', 'trainer_name', 'course', 'off_time']}
-            runner_info['race_date'] = race.get('date', 'N/A')
+            # CORRECCIÓN: Asegurarse de que las claves del diccionario coinciden con los placeholders del prompt
+            runner_info = {
+                'horse_name': runner.get('horse', 'N/A'),
+                'jockey_name': runner.get('jockey_name', 'N/A'),
+                'trainer_name': runner.get('trainer_name', 'N/A'),
+                'course': runner.get('course', 'N/A'),
+                'race_date': race.get('date', 'N/A'),
+                'race_time': runner.get('off_time', 'N/A')
+            }
             
             prompt_caballo = PROMPT_TEMPLATES["caballo"].format(**runner_info)
             ai_response_str = call_gemini_api(prompt_caballo)
