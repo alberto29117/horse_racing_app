@@ -8,6 +8,7 @@ import io
 import numpy as np
 from sqlalchemy import create_engine
 import google.generativeai as genai
+from datetime import date, timedelta
 
 # --- CONFIGURACIÓN INICIAL Y CONEXIONES ---
 
@@ -112,15 +113,27 @@ def check_password():
     return False
 
 def fetch_racing_data():
-    """Obtiene los datos de las carreras de TheRacingAPI."""
-    url = "https://the-racing-api1.p.rapidapi.com/v1/racecards/free"
+    """Obtiene los datos de las carreras de TheRacingAPI para el día siguiente."""
+    # Calcular la fecha de mañana
+    tomorrow = date.today() + timedelta(days=1)
+    date_str = tomorrow.strftime('%Y-%m-%d')
+
+    # Usamos el endpoint que permite especificar una fecha.
+    # Nota: El plan gratuito de la API podría no permitir el acceso a fechas futuras.
+    url = "https://the-racing-api1.p.rapidapi.com/v1/racecards"
+    params = {"date": date_str}
+    
     headers = {"x-rapidapi-key": RACING_API_KEY, "x-rapidapi-host": "the-racing-api1.p.rapidapi.com"}
+    
     try:
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, params=params)
         response.raise_for_status()
         return response.json().get('racecards', [])
     except requests.exceptions.RequestException as e:
         st.error(f"Error al contactar TheRacingAPI: {e}")
+        # Añadir un mensaje más específico si es un error de cliente (403/401)
+        if e.response and e.response.status_code in [401, 403]:
+            st.warning("Este error puede indicar que tu plan de API no permite acceder a fechas futuras. El endpoint gratuito suele estar limitado al día de hoy.")
         return []
 
 def call_gemini_api(prompt):
@@ -132,7 +145,6 @@ def call_gemini_api(prompt):
         response = model.generate_content(prompt)
         return response.text
     except Exception as e:
-        # Si el error es de cuota, lo mostramos de forma más clara
         if "429" in str(e):
              st.error(f"Límite de cuota de la API de Gemini alcanzado. El proceso se reanudará en breve. Error: {e}")
         else:
@@ -171,7 +183,14 @@ def run_ai_analysis(race_data):
                     ai_data = json.loads(ai_response_str)
                     runner['cuota_mercado'] = ai_data.get('perfil', {}).get('cuota_betfair', 999.0)
                     runner['swot_balance_score'] = ai_data.get('synergy_analysis', {}).get('swot_balance_score', 0)
-                    runner['in_running_comment'] = ai_data.get('analisis_forma', [{}])[0].get('comentario_in_running', '')
+                    
+                    # CORRECCIÓN: Manejo seguro de la lista 'analisis_forma'
+                    analisis_forma_list = ai_data.get('analisis_forma', [])
+                    if analisis_forma_list:
+                        runner['in_running_comment'] = analisis_forma_list[0].get('comentario_in_running', '')
+                    else:
+                        runner['in_running_comment'] = ''
+
                     runner['official_rating'] = runner.get('official_rating', np.random.randint(70, 100))
                     runner['weight_lbs'] = runner.get('weight_lbs', np.random.randint(120, 140))
                     runner['age'] = pd.to_numeric(runner.get('age'), errors='coerce')
@@ -182,7 +201,6 @@ def run_ai_analysis(race_data):
             processed_runners += 1
             progress_bar.progress(processed_runners / total_runners)
             
-            # CORRECCIÓN: Pausa conservadora para asegurar no exceder los límites de la API de pago
             time.sleep(3) 
             
     st.success("Análisis con IA completado.")
