@@ -114,7 +114,6 @@ def check_password():
 
 def fetch_racing_data():
     """Obtiene los datos de las carreras de TheRacingAPI para el día de HOY."""
-    # NOTA: Esta es la URL correcta para el plan gratuito a través de RapidAPI.
     url = "https://the-racing-api1.p.rapidapi.com/v1/racecards/free"
     
     headers = {
@@ -194,7 +193,6 @@ def run_ai_analysis(race_data):
             processed_runners += 1
             progress_bar.progress(processed_runners / total_runners)
             
-            # Pausa ajustada para plan de pago (Tier 1 - 60 RPM)
             time.sleep(1.5) 
             
     st.success("Análisis con IA completado.")
@@ -308,6 +306,8 @@ with tab1:
         
         if 'enriched_runners_df' in st.session_state:
             display_df = st.session_state.enriched_runners_df.copy()
+            # CORRECCIÓN: Eliminar columnas duplicadas antes de mostrar
+            display_df = display_df.loc[:, ~display_df.columns.duplicated()]
             display_df.rename(columns={'cuota_mercado': 'Cuota (IA)'}, inplace=True)
             cols_to_show = ['horse', 'jockey_name', 'trainer_name', 'age', 'sex', 'Cuota (IA)']
             
@@ -322,6 +322,8 @@ with tab1:
                     runners = race.get('runners', [])
                     if runners:
                         df = pd.DataFrame(runners)
+                        # CORRECCIÓN: Eliminar columnas duplicadas antes de mostrar
+                        df = df.loc[:, ~df.columns.duplicated()]
                         df.rename(columns={'jockey': 'jockey_name', 'trainer': 'trainer_name'}, inplace=True)
                         display_cols = ['horse', 'jockey_name', 'trainer_name', 'age', 'sex']
                         cols_to_show = [col for col in display_cols if col in df.columns]
