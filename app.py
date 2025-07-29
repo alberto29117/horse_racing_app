@@ -5,7 +5,7 @@ import json
 import joblib
 import time
 import io
-import numpy as np # Necesario para la simulación de la API de Gemini
+import numpy as np
 from sqlalchemy import create_engine
 
 # --- CONFIGURACIÓN INICIAL Y CONEXIONES ---
@@ -14,9 +14,10 @@ st.set_page_config(page_title="Análisis Hípico con IA", layout="wide")
 
 # !!! IMPORTANTE: CAMBIA ESTA URL POR LA DE TU REPOSITORIO DE GITHUB !!!
 # La URL debe apuntar al contenido "raw" (crudo).
-GITHUB_RAW_URL = "https://raw.githubusercontent.com/alberto29117/horse_racing_app/main/"
+# Ejemplo: "https://raw.githubusercontent.com/alberto29117/horse_racing_app/main/"
+GITHUB_RAW_URL = "https://raw.githubusercontent.com/tu_usuario/tu_repositorio/main/"
 
-# --- CARGA DE RECURSOS DESDE GITHUB ---
+# --- CARGA DE RECURSOS DESDE GITHUB (CACHEADO) ---
 
 @st.cache_resource
 def load_model_from_github():
@@ -24,15 +25,12 @@ def load_model_from_github():
     model_url = f"{GITHUB_RAW_URL}lgbm_model.joblib"
     try:
         response = requests.get(model_url)
-        response.raise_for_status()  # Lanza un error si la descarga falla
+        response.raise_for_status()
         model_file = io.BytesIO(response.content)
         model = joblib.load(model_file)
         return model
-    except requests.exceptions.RequestException as e:
-        st.error(f"Error al descargar el modelo desde GitHub: {e}")
-        return None
     except Exception as e:
-        st.error(f"Error al cargar el modelo: {e}")
+        st.error(f"Error crítico al cargar el modelo 'lgbm_model.joblib' desde GitHub: {e}")
         return None
 
 @st.cache_data
@@ -43,13 +41,12 @@ def load_prompt_from_github(prompt_filename):
         response = requests.get(prompt_url)
         response.raise_for_status()
         return response.text
-    except requests.exceptions.RequestException as e:
+    except Exception as e:
         st.error(f"Error al cargar el prompt '{prompt_filename}' desde GitHub: {e}")
         return ""
 
 # Cargar el modelo y los prompts al iniciar la app
 model_pipeline = load_model_from_github()
-
 PROMPT_TEMPLATES = {
     "caballo": load_prompt_from_github("prompt_caballos.txt"),
     "jockey": load_prompt_from_github("prompt_jockey.txt"),
@@ -57,34 +54,34 @@ PROMPT_TEMPLATES = {
     "sinergia": load_prompt_from_github("prompt_sinergia.txt"),
 }
 
-# --- CONFIGURACIÓN DE SECRETOS Y BASE DE DATOS ---
+# --- CONFIGURACIÓN DE SECRETOS Y BASE DE DATOS (VERSIÓN CORREGIDA) ---
 
 try:
-    # Cargar secretos de la base de datos
-    db_creds = st.secrets["database"]
-    DB_USER = db_creds["user"]
-    DB_PASSWORD = db_creds["password"]
-    DB_HOST = db_creds["host"]
-    DB_PORT = db_creds["port"]
-    DB_NAME = db_creds["name"]
+    # Cargar claves directamente (estructura plana)
+    RACING_API_KEY = st.secrets["RACING_API_KEY"]
+    GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
+    APP_USERNAME = st.secrets["APP_USERNAME"]
+    APP_PASSWORD = st.secrets["APP_PASSWORD"]
 
-    # Cargar claves de API
-    api_keys = st.secrets["api_keys"]
-    RACING_API_KEY = api_keys["racing"]
-    GEMINI_API_KEY = api_keys["gemini"]
-
-    # Cargar credenciales de la app
-    app_creds = st.secrets["app_credentials"]
-    APP_USERNAME = app_creds["username"]
-    APP_PASSWORD = app_creds["password"]
-
-    # Configurar conexión a la base de datos
-    DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    # Lógica mejorada para la conexión a la base de datos
+    DB_HOST = st.secrets["DB_HOST"]
+    if "postgresql://" in DB_HOST:
+        # Si el host ya es una URL de conexión completa, la usamos directamente.
+        DATABASE_URL = DB_HOST
+    else:
+        # Si no, la construimos como antes.
+        DB_USER = st.secrets["DB_USER"]
+        DB_PASSWORD = st.secrets["DB_PASSWORD"]
+        DB_PORT = st.secrets["DB_PORT"]
+        DB_NAME = st.secrets["DB_NAME"]
+        DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    
     engine = create_engine(DATABASE_URL)
 
 except (KeyError, FileNotFoundError) as e:
-    st.error(f"ERROR: No se pudo cargar una clave desde 'secrets.toml'. Revisa que el archivo exista en la carpeta .streamlit y que todas las claves estén definidas correctamente. Error: {e}")
+    st.error(f"ERROR: No se pudo cargar una clave desde 'secrets.toml'. Revisa que el archivo exista en la carpeta .streamlit y que todas las claves estén definidas. Clave faltante: {e}")
     st.stop()
+
 # --- FUNCIONES AUXILIARES ---
 
 def check_password():
@@ -134,13 +131,17 @@ def call_gemini_api(prompt):
     """Llama a la API de Gemini y devuelve la respuesta."""
     # --- IMPLEMENTACIÓN REAL (DESCOMENTAR EN PRODUCCIÓN) ---
     # import google.generativeai as genai
-    # genai.configure(api_key=GEMINI_API_KEY)
-    # model = genai.GenerativeModel('gemini-1.5-pro-latest')
-    # response = model.generate_content(prompt)
-    # return response.text
+    # try:
+    #     genai.configure(api_key=GEMINI_API_KEY)
+    #     model = genai.GenerativeModel('gemini-1.5-pro-latest')
+    #     response = model.generate_content(prompt)
+    #     return response.text
+    # except Exception as e:
+    #     st.error(f"Error al configurar la API de Gemini. Verifica tu API Key. Error: {e}")
+    #     return None
     
     # --- SIMULACIÓN PARA DESARROLLO ---
-    time.sleep(1) # Simular latencia de la red
+    time.sleep(1)
     mock_response = {
         "perfil": {"cuota_betfair": round(np.random.uniform(2.0, 20.0), 2)},
         "analisis_forma": [{"comentario_in_running": "ran on well"}],
@@ -165,6 +166,8 @@ def run_ai_analysis(race_data):
         for runner in race.get('runners', []):
             runner_info = {
                 'horse_name': runner.get('horse', 'N/A'),
+                'jockey_name': runner.get('jockey', 'N/A'),
+                'trainer_name': runner.get('trainer', 'N/A'),
                 'course': race.get('course', 'N/A'),
                 'race_date': race.get('date', 'N/A'),
                 'race_time': race.get('off_time', 'N/A')
@@ -172,23 +175,19 @@ def run_ai_analysis(race_data):
             
             prompt_caballo = PROMPT_TEMPLATES["caballo"].format(**runner_info)
             
-            try:
-                ai_response_str = call_gemini_api(prompt_caballo)
-                ai_data = json.loads(ai_response_str)
-                
-                runner['ai_analysis'] = ai_data
-                runner['cuota_mercado'] = ai_data.get('perfil', {}).get('cuota_betfair', 999.0)
-                runner['swot_balance_score'] = ai_data.get('synergy_analysis', {}).get('swot_balance_score', 0)
-                runner['in_running_comment'] = ai_data.get('analisis_forma', [{}])[0].get('comentario_in_running', '')
-
-                # Añadir datos faltantes para el modelo (simulado)
-                runner['official_rating'] = runner.get('official_rating', np.random.randint(70, 100))
-                runner['weight_lbs'] = runner.get('weight_lbs', np.random.randint(120, 140))
-
-                all_runners_data.append(runner)
-
-            except Exception as e:
-                st.warning(f"No se pudo analizar a {runner.get('horse')}: {e}")
+            ai_response_str = call_gemini_api(prompt_caballo)
+            if ai_response_str:
+                try:
+                    ai_data = json.loads(ai_response_str)
+                    runner['ai_analysis'] = ai_data
+                    runner['cuota_mercado'] = ai_data.get('perfil', {}).get('cuota_betfair', 999.0)
+                    runner['swot_balance_score'] = ai_data.get('synergy_analysis', {}).get('swot_balance_score', 0)
+                    runner['in_running_comment'] = ai_data.get('analisis_forma', [{}])[0].get('comentario_in_running', '')
+                    runner['official_rating'] = runner.get('official_rating', np.random.randint(70, 100))
+                    runner['weight_lbs'] = runner.get('weight_lbs', np.random.randint(120, 140))
+                    all_runners_data.append(runner)
+                except json.JSONDecodeError:
+                    st.warning(f"La respuesta de la IA para {runner.get('horse')} no es un JSON válido.")
 
             processed_runners += 1
             progress_bar.progress(processed_runners / total_runners)
@@ -209,7 +208,6 @@ def generate_value_bets(runners_df):
         runners_df['p_modelo'] = probabilities[:, 1]
     except Exception as e:
         st.error(f"Error al predecir con el modelo: {e}")
-        st.info("Asegúrese de que los datos de entrada coinciden con los del entrenamiento.")
         return []
 
     runners_df['p_implicita'] = 1 / runners_df['cuota_mercado']
