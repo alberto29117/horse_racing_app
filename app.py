@@ -7,6 +7,7 @@ import time
 import io
 import numpy as np
 from sqlalchemy import create_engine
+import google.generativeai as genai
 
 # --- CONFIGURACIÓN INICIAL Y CONEXIONES ---
 
@@ -127,26 +128,28 @@ def store_data_in_db(racecards):
     st.success(f"{len(racecards)} carreras guardadas en la base de datos (simulado).")
 
 def call_gemini_api(prompt):
-    """Llama a la API de Gemini y devuelve la respuesta."""
-    # --- IMPLEMENTACIÓN REAL (DESCOMENTAR EN PRODUCCIÓN) ---
-    # import google.generativeai as genai
-    # try:
-    #     genai.configure(api_key=GEMINI_API_KEY)
-    #     model = genai.GenerativeModel('gemini-1.5-pro-latest')
-    #     response = model.generate_content(prompt)
-    #     return response.text
-    # except Exception as e:
-    #     st.error(f"Error al configurar la API de Gemini. Verifica tu API Key. Error: {e}")
-    #     return None
-    
-    # --- SIMULACIÓN PARA DESARROLLO ---
-    time.sleep(1)
-    mock_response = {
-        "perfil": {"cuota_betfair": round(np.random.uniform(2.0, 20.0), 2)},
-        "analisis_forma": [{"comentario_in_running": "ran on well"}],
-        "synergy_analysis": {"swot_balance_score": np.random.randint(-5, 5)}
-    }
-    return json.dumps(mock_response)
+    """Llama a la API de Gemini y devuelve la respuesta en formato JSON."""
+    # --- IMPLEMENTACIÓN REAL ---
+    try:
+        genai.configure(api_key=GEMINI_API_KEY)
+        
+        # Configuración para forzar la salida en JSON
+        generation_config = {
+          "response_mime_type": "application/json",
+        }
+        
+        model = genai.GenerativeModel(
+            model_name="gemini-1.5-pro-latest",
+            generation_config=generation_config,
+        )
+        
+        response = model.generate_content(prompt)
+        return response.text
+        
+    except Exception as e:
+        st.error(f"Error al contactar la API de Gemini. Verifica tu API Key. Error: {e}")
+        # Devolver un JSON vacío para evitar que el análisis posterior falle
+        return "{}"
 
 def run_ai_analysis(race_data):
     """Itera sobre los corredores, los enriquece con datos de la IA y estandariza los campos."""
