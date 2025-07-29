@@ -207,8 +207,9 @@ def generate_value_bets(runners_df):
             puntos_restantes -= stake_sugerido
     return final_bets
 
-def update_bet_status(bet_id, new_status):
+def update_bet_status(bet_id):
     """Actualiza el estado de una apuesta y calcula su P/L."""
+    new_status = st.session_state[f"status_{bet_id}"]
     idx = st.session_state.historical_bets.index[st.session_state.historical_bets['bet_id'] == bet_id][0]
     
     st.session_state.historical_bets.loc[idx, 'status'] = new_status
@@ -223,12 +224,10 @@ def update_bet_status(bet_id, new_status):
     elif new_status == "Perdida":
         pnl = -stake
     elif new_status == "Colocada":
-        # Asumiendo 1/5 de la cuota para la parte de colocado en una apuesta E/W
-        # Esto es una simplificación y podría mejorarse.
         if "ew" in bet['stake_type'].lower():
             place_odds = 1 + ((odds - 1) / 5)
-            pnl = (stake / 2 * place_odds) - stake # Gana la mitad de colocado, pierde la mitad de ganador
-        else: # Si no es EW, una colocación es una pérdida
+            pnl = (stake / 2 * place_odds) - stake
+        else:
             pnl = -stake
     elif new_status == "No Corrió":
         pnl = 0.0
@@ -250,21 +249,60 @@ tab1, tab2, tab3, tab4 = st.tabs(["Análisis Diario", "Gestionar Apuestas Pendie
 # --- PESTAÑA 1: ANÁLISIS DIARIO ---
 with tab1:
     st.header("Flujo de Trabajo Diario")
-    if st.button("Paso 1: Obtener Carreras de Mañana"):
-        with st.spinner("Obteniendo datos de TheRacingAPI..."):
-            st.session_state.race_data = fetch_racing_data()
-            if 'final_bets' in st.session_state: del st.session_state.final_bets
     
-    if 'race_data' in st.session_state:
-        if st.button("Paso 2: Analizar y Generar Apuestas"):
+    col_a, col_b = st.columns(2)
+    with col_a:
+        if st.button("Paso 1: Obtener Carreras de Mañana", use_container_width=True):
+            with st.spinner("Obteniendo datos de TheRacingAPI..."):
+                st.session_state.race_data = fetch_racing_data()
+                if 'final_bets' in st.session_state: del st.session_state.final_bets
+                if 'enriched_runners_df' in st.session_state: del st.session_state.enriched_runners_df
+    
+    with col_b:
+        is_disabled = 'race_data' not in st.session_state
+        if st.button("Paso 2: Analizar y Generar Apuestas", use_container_width=True, disabled=is_disabled):
             with st.spinner("Analizando con IA y generando predicciones..."):
                 enriched_runners = run_ai_analysis(st.session_state.race_data)
                 if enriched_runners:
                     runners_df = pd.DataFrame(enriched_runners)
                     runners_df.fillna(0, inplace=True)
+                    
+                    race_name_map = { (r['course'], r['off_time']): r.get('race_name', 'N/A') for r in st.session_state.race_data }
+                    runners_df['race_name'] = runners_df.apply(lambda row: race_name_map.get((row['course'], row['off_time']), 'N/A'), axis=1)
+
+                    st.session_state.enriched_runners_df = runners_df
                     st.session_state.final_bets = generate_value_bets(runners_df)
+                    st.rerun()
                 else:
                     st.warning("No se pudieron analizar los corredores.")
+
+    st.divider()
+
+    if 'race_data' in st.session_state:
+        st.subheader("Listado de Carreras")
+        
+        if 'enriched_runners_df' in st.session_state:
+            display_df = st.session_state.enriched_runners_df.copy()
+            display_df.rename(columns={'cuota_mercado': 'Cuota (IA)'}, inplace=True)
+            cols_to_show = ['horse', 'jockey_name', 'trainer_name', 'age', 'sex', 'Cuota (IA)']
+            
+            for race_id, group in display_df.groupby(['course', 'off_time', 'race_name']):
+                course, off_time, race_name = race_id
+                with st.expander(f"📍 {course} {off_time} - {race_name}", expanded=True):
+                    existing_cols = [col for col in cols_to_show if col in group.columns]
+                    st.dataframe(group[existing_cols])
+        else:
+            for race in st.session_state.race_data:
+                with st.expander(f"📍 {race.get('course', 'N/A')} {race.get('off_time', '')} - {race.get('race_name', 'N/A')}", expanded=True):
+                    runners = race.get('runners', [])
+                    if runners:
+                        df = pd.DataFrame(runners)
+                        df.rename(columns={'jockey': 'jockey_name', 'trainer': 'trainer_name'}, inplace=True)
+                        display_cols = ['horse', 'jockey_name', 'trainer_name', 'age', 'sex']
+                        cols_to_show = [col for col in display_cols if col in df.columns]
+                        st.dataframe(df[cols_to_show])
+                    else:
+                        st.write("No hay corredores para esta carrera.")
     
     if 'final_bets' in st.session_state and st.session_state.final_bets:
         st.subheader("Apuestas Recomendadas para Mañana")
@@ -275,7 +313,6 @@ with tab1:
                 col1, col2, col3 = st.columns(3)
                 col1.metric("Tipo de Apuesta", bet['stake_type'])
                 col2.metric("Cuota IA", f"{bet['ia_odds']:.2f}")
-                # Campo para introducir la cuota real
                 st.session_state.final_bets[i]['placed_odds'] = col3.number_input("Cuota Apostada", min_value=1.0, value=bet['ia_odds'], step=0.1, key=f"odds_{i}")
                 st.divider()
             
@@ -295,8 +332,8 @@ with tab1:
                 new_bets_df = pd.DataFrame(new_bets)
                 st.session_state.historical_bets = pd.concat([st.session_state.historical_bets, new_bets_df], ignore_index=True)
                 st.success(f"{len(new_bets)} apuestas guardadas con éxito.")
-                # Limpiar recomendaciones para evitar duplicados
                 del st.session_state.final_bets
+                st.rerun()
 
 # --- PESTAÑA 2: GESTIONAR APUESTAS PENDIENTES ---
 with tab2:
@@ -308,12 +345,12 @@ with tab2:
     else:
         for index, bet in pending_bets.iterrows():
             st.markdown(f"**{bet['horse_name']}** ({bet['course']} {bet['time']}) - **Cuota:** {bet['placed_odds']:.2f}")
-            new_status = st.selectbox(
+            st.selectbox(
                 "Resultado:",
                 ("Pendiente", "Ganada", "Perdida", "Colocada", "No Corrió"),
                 key=f"status_{bet['bet_id']}",
                 on_change=update_bet_status,
-                args=(bet['bet_id'], st.session_state.get(f"status_{bet['bet_id']}", "Pendiente"))
+                args=(bet['bet_id'],)
             )
             st.divider()
 
