@@ -8,6 +8,7 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
+from pandas.errors import EmptyDataError
 
 def create_mock_historical_data(filename="historical_data.csv"):
     """Crea un archivo CSV de datos históricos de ejemplo para demostración."""
@@ -39,29 +40,17 @@ def feature_engineering_pipeline():
     categorical_features = ['course', 'jockey_name', 'trainer_name']
     text_feature = 'in_running_comment'
 
-    # Pipeline para características numéricas
-    numeric_transformer = Pipeline(steps=[
-        ('scaler', StandardScaler())
-    ])
+    numeric_transformer = Pipeline(steps=[('scaler', StandardScaler())])
+    categorical_transformer = Pipeline(steps=[('onehot', OneHotEncoder(handle_unknown='ignore'))])
+    text_transformer = Pipeline(steps=[('tfidf', TfidfVectorizer(max_features=50))])
 
-    # Pipeline para características categóricas
-    categorical_transformer = Pipeline(steps=[
-        ('onehot', OneHotEncoder(handle_unknown='ignore'))
-    ])
-    
-    # Pipeline para la característica de texto
-    text_transformer = Pipeline(steps=[
-        ('tfidf', TfidfVectorizer(max_features=50)) # Limitar a 50 características para evitar sobreajuste
-    ])
-
-    # Combinar todos los preprocesadores
     preprocessor = ColumnTransformer(
         transformers=[
             ('num', numeric_transformer, numeric_features),
             ('cat', categorical_transformer, categorical_features),
             ('text', text_transformer, text_feature)
         ],
-        remainder='passthrough' # Mantener otras columnas si las hubiera
+        remainder='passthrough'
     )
     
     return preprocessor
@@ -69,13 +58,12 @@ def feature_engineering_pipeline():
 def objective(trial, X, y, preprocessor):
     """Función objetivo para la optimización con Optuna."""
     
-    # Definir el pipeline completo con el preprocesador y el clasificador
+    # CORRECCIÓN: Cambiado a 'binary' ya que predecimos si gana (1) o no (0).
     model_pipeline = Pipeline(steps=[
         ('preprocessor', preprocessor),
-        ('classifier', lgb.LGBMClassifier(objective='multiclass', random_state=42, verbosity=-1))
+        ('classifier', lgb.LGBMClassifier(objective='binary', random_state=42, verbosity=-1))
     ])
 
-    # Definir el espacio de búsqueda de hiperparámetros para LightGBM
     param_grid = {
         "classifier__n_estimators": trial.suggest_int("n_estimators", 200, 2000, step=100),
         "classifier__learning_rate": trial.suggest_float("learning_rate", 0.01, 0.3, log=True),
@@ -87,37 +75,36 @@ def objective(trial, X, y, preprocessor):
     
     model_pipeline.set_params(**param_grid)
 
-    # Validación cruzada temporal
     tscv = TimeSeriesSplit(n_splits=5)
     scores = []
     for train_index, val_index in tscv.split(X):
         X_train, X_val = X.iloc[train_index], X.iloc[val_index]
         y_train, y_val = y.iloc[train_index], y.iloc[val_index]
         
+        # Añadido control para evitar error en splits sin ganadores
+        if len(y_train.unique()) < 2:
+            continue
+
         model_pipeline.fit(X_train, y_train)
-        # Usamos log_loss como métrica, ya que queremos probabilidades bien calibradas
         from sklearn.metrics import log_loss
         y_pred_proba = model_pipeline.predict_proba(X_val)
         score = log_loss(y_val, y_pred_proba)
         scores.append(score)
 
-    return np.mean(scores)
+    return np.mean(scores) if scores else float('inf')
 
 def main():
     """Función principal para entrenar y guardar el modelo."""
     try:
         df = pd.read_csv("historical_data.csv", parse_dates=['race_date'])
-    except FileNotFoundError:
+    except (FileNotFoundError, EmptyDataError):
+        print("El archivo 'historical_data.csv' no se encontró o está vacío. Creando datos de ejemplo...")
         df = create_mock_historical_data()
 
     df = df.sort_values(by='race_date')
     
-    # La variable objetivo (target) es si el caballo ganó (1) o no (0)
-    # Para un modelo multiclase, usamos el ID del caballo como clase.
-    # Aquí simplificaremos y predeciremos la posición 1.
     df['is_winner'] = (df['finish_position'] == 1).astype(int)
     
-    # Asegurarse de que X solo contiene las características, no el target ni IDs
     features = [
         'official_rating', 'age', 'weight_lbs', 'swot_balance_score', 
         'course', 'jockey_name', 'trainer_name', 'in_running_comment'
@@ -129,23 +116,22 @@ def main():
 
     print("Iniciando optimización de hiperparámetros con Optuna...")
     study = optuna.create_study(direction="minimize")
-    study.optimize(lambda trial: objective(trial, X, y, preprocessor), n_trials=50) # 50 iteraciones para encontrar buenos parámetros
+    study.optimize(lambda trial: objective(trial, X, y, preprocessor), n_trials=50)
 
     print(f"Mejor puntuación (log_loss): {study.best_value}")
     print(f"Mejores hiperparámetros: {study.best_params}")
 
-    # Entrenar el modelo final con los mejores parámetros encontrados
     print("Entrenando modelo final con los mejores parámetros...")
+    # CORRECCIÓN: Cambiado a 'binary' para el modelo final también.
     final_pipeline = Pipeline(steps=[
         ('preprocessor', preprocessor),
-        ('classifier', lgb.LGBMClassifier(objective='multiclass', random_state=42, verbosity=-1, **study.best_params))
+        ('classifier', lgb.LGBMClassifier(objective='binary', random_state=42, verbosity=-1, **study.best_params))
     ])
     
     final_pipeline.fit(X, y)
 
-    # Guardar el pipeline completo (preprocesador + modelo)
     joblib.dump(final_pipeline, 'lgbm_model.joblib')
-    print("Modelo guardado como 'lgbm_model.joblib'")
+    print("¡Éxito! Modelo guardado como 'lgbm_model.joblib'")
 
 if __name__ == "__main__":
     main()
