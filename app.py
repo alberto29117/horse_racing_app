@@ -274,7 +274,15 @@ if 'race_data' in st.session_state:
         with st.expander(f"📍 {race.get('course', 'N/A')} {race.get('off_time', '')} - {race.get('race_name', 'N/A')}"):
             runners = race.get('runners', [])
             if runners:
-                st.dataframe(pd.DataFrame(runners)[['horse', 'jockey_name', 'trainer_name', 'age', 'sex']])
+                # CORRECCIÓN: Crear DataFrame, renombrar columnas y mostrar de forma segura
+                df = pd.DataFrame(runners)
+                df.rename(columns={'jockey': 'jockey_name', 'trainer': 'trainer_name'}, inplace=True)
+                
+                display_cols = ['horse', 'jockey_name', 'trainer_name', 'age', 'sex']
+                # Filtrar para mostrar solo las columnas que existen en el DataFrame
+                cols_to_show = [col for col in display_cols if col in df.columns]
+                
+                st.dataframe(df[cols_to_show])
             else:
                 st.write("No hay corredores para esta carrera.")
     
