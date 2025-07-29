@@ -1,20 +1,24 @@
-Realiza un análisis exhaustivo y basado en datos exclusivamente sobre el entrenador utilizando y comparando información de fuentes fiables como Sporting Life, Timeform, At The Races y Racing Post. LA INFORMACION NO PUEDE SER INVENTADA, debe ser contrastada en al menos 3 de esas páginas indicadas anteriormente.
-Enfócate exclusivamente en el perfil y rendimiento del entrenador [NOMBRE DEL ENTRENADOR], que entrena al caballo [NOMBRE DEL CABALLO] y compite en [HIPÓDROMO] el día [DIA DE LA CARRERA] a las [HORA DE LA CARRERA] hora local de Reino Unido.
-
-El análisis debe cubrir: 
-1. **Forma del Establo (Stable Form):** 
-* Estadísticas clave del establo en los últimos 14 y 30 días (carreras, victorias, strike rate %). 
-* Menciona cualquier victoria o actuación especialmente destacada de otros caballos del establo en la última semana que indique que el establo está en un buen momento. 
-
-2. **Patrones y Estadísticas del Entrenador:** 
-* Su récord general y strike rate en el hipódromo de [HIPÓDROMO]. 
-* Su récord específico en carreras de tipo "Nursery" con potros de 2 años. 
-
-3. **Ángulos Clave (Key Angles):** Investiga y presenta sus estadísticas en situaciones específicas relevantes para este caballo: 
-* Rendimiento de sus caballos debutando en handicap. 
-* Porcentaje de éxito al aplicar carrilleras (cheekpieces) por primera vez (si aplica). 
-* Rendimiento de sus caballos tras un descanso de [NÚMERO] días. 
-
-4. **Estrategia y Colocación de Caballos:** 
-* ¿Es conocido por ser un entrenador que mejora gradualmente a sus caballos o por tenerlos listos para ganar en su debut en handicap? 
-* Analiza su patrón de uso de jockeys. ¿Suele optar por jockeys de primer nivel, aprendices con descargo, o tiene un círculo cerrado de jinetes de confianza? Concluye evaluando si el perfil del entrenador y la forma actual de su establo sugieren que el caballo está preparado para ofrecer su máximo rendimiento hoy.
+Realiza un análisis exhaustivo y basado en datos exclusivamente sobre el entrenador utilizando y comparando información de fuentes fiables como Sporting Life, Timeform, At The Races y Racing Post. LA INFORMACION NO PUEDE SER INVENTADA, debe ser contrastada.
+Enfócate exclusivamente en el perfil y rendimiento del entrenador {trainer_name}, que entrena al caballo {horse_name} y compite en {course} el día {race_date} a las {race_time} hora local de Reino Unido.
+Tu análisis debe devolver un JSON con la siguiente estructura exacta:
+{{
+  "forma_establo": {{
+    "stats_14_dias": {{"carreras": int, "victorias": int, "strike_rate": float}},
+    "stats_30_dias": {{"carreras": int, "victorias": int, "strike_rate": float}},
+    "comentario_forma": "string"
+  }},
+  "patrones_entrenador": {{
+    "record_hipodromo": "string",
+    "record_tipo_carrera": "string"
+  }},
+  "angulos_clave": {{
+    "debut_handicap": "string",
+    "primer_uso_ayudas": "string",
+    "tras_descanso": "string"
+  }},
+  "estrategia_colocacion": {{
+    "tipo_progresion": "string",
+    "patron_uso_jockeys": "string"
+  }},
+  "conclusion": "string"
+}}
