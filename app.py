@@ -60,23 +60,31 @@ PROMPT_TEMPLATES = {
 # --- CONFIGURACIÓN DE SECRETOS Y BASE DE DATOS ---
 
 try:
-    DB_USER = st.secrets["DB_USER"]
-    DB_PASSWORD = st.secrets["DB_PASSWORD"]
-    DB_HOST = st.secrets["DB_HOST"]
-    DB_PORT = st.secrets["DB_PORT"]
-    DB_NAME = st.secrets["DB_NAME"]
-    RACING_API_KEY = st.secrets["RACING_API_KEY"]
-    GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
-    APP_USERNAME = st.secrets["APP_USERNAME"]
-    APP_PASSWORD = st.secrets["APP_PASSWORD"]
-    
+    # Cargar secretos de la base de datos
+    db_creds = st.secrets["database"]
+    DB_USER = db_creds["user"]
+    DB_PASSWORD = db_creds["password"]
+    DB_HOST = db_creds["host"]
+    DB_PORT = db_creds["port"]
+    DB_NAME = db_creds["name"]
+
+    # Cargar claves de API
+    api_keys = st.secrets["api_keys"]
+    RACING_API_KEY = api_keys["racing"]
+    GEMINI_API_KEY = api_keys["gemini"]
+
+    # Cargar credenciales de la app
+    app_creds = st.secrets["app_credentials"]
+    APP_USERNAME = app_creds["username"]
+    APP_PASSWORD = app_creds["password"]
+
+    # Configurar conexión a la base de datos
     DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     engine = create_engine(DATABASE_URL)
 
-except (FileNotFoundError, KeyError):
-    st.error("ERROR: El archivo 'secrets.toml' no está configurado o faltan claves. Si despliegas en Streamlit Cloud, asegúrate de haber configurado los secretos en la plataforma.")
+except (KeyError, FileNotFoundError) as e:
+    st.error(f"ERROR: No se pudo cargar una clave desde 'secrets.toml'. Revisa que el archivo exista en la carpeta .streamlit y que todas las claves estén definidas correctamente. Error: {e}")
     st.stop()
-
 # --- FUNCIONES AUXILIARES ---
 
 def check_password():
