@@ -1,0 +1,19 @@
+Realiza un análisis exhaustivo y basado en datos exclusivamente sobre la sinergia del caballo [NOMBRE DEL CABALLO], el jockey [NOMBRE DEL JOCKEY] y el entrenador [NOMBRE DEL ENTRENADOR] que corren en la carrera [HIPÓDROMO] el día [DIA DE LA CARRERA] a las [HORA DE LA CARRERA] hora local de Reino Unido. Utilizando y comparando exclusivamente la información que has proporcionado anteriormente. LA INFORMACION NO PUEDE SER INVENTADA.
+
+Elabora un informe de sinergia que responda a lo siguiente: 
+1. **Evaluación de la Asociación (Partnership):** 
+* Combina las estadísticas: ¿Cuál es el porcentaje de éxito exacto de [NOMBRE DEL ENTRENADOR] y [NOMBRE DEL JOCKEY] cuando colaboran? ¿Y específicamente en carreras de 2 años en este hipódromo, si existen datos? 
+* ¿Existe un beneficio/pérdida positivo (LSP) para esta combinación entrenador-jockey? 
+
+2. **Idoneidad Táctica (Tactical Fit):** 
+* Compara el estilo de carrera del caballo con el estilo de monta del jockey. ¿Son compatibles? (Ej: "El caballo necesita un remate fuerte y el jockey es conocido por su fuerza, lo que es una sinergia positiva" o "El caballo es un líder y el jockey tiene un mal récord juzgando el ritmo, lo que es un riesgo"). 
+
+3. **Análisis de la Intención:** 
+* ¿Qué nos dice la elección de este jockey para este caballo en esta carrera específica? ¿Sugiere una apuesta fuerte del establo? ¿Es una elección para aprovechar un descargo de peso? ¿O es simplemente la monta disponible? 
+
+4. **Análisis DAFO (SWOT) de la Combinación:** 
+* **Fortalezas:** ¿Cuál es el mayor punto fuerte de este trío? (ej: "La forma del establo combinada con la experiencia del jockey en el hipódromo"). 
+* **Oportunidades:** ¿Qué factor externo podría beneficiarles? (ej: "Un ritmo de carrera previsto que se adapta perfectamente al estilo del caballo"). 
+* **Debilidades:** ¿Cuál es su principal vulnerabilidad? (ej: "El caballo nunca ha corrido en esta pista y el jockey tiene un mal récord aquí"). 
+* **Amenazas:** ¿Cuál es el mayor riesgo? (ej: "Otros rivales tienen ratings de velocidad superiores"). 
+**Veredicto Final:** Basado en la sinergia de todos los factores, emite un juicio final. ¿Es esta combinación una de las más probables para ganar la carrera? ¿O hay factores de riesgo que superan los puntos fuertes? Cuantifica tu confianza en una escala del 1 al 10.
