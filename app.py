@@ -14,7 +14,7 @@ st.set_page_config(page_title="Análisis Hípico con IA", layout="wide")
 
 # !!! IMPORTANTE: CAMBIA ESTA URL POR LA DE TU REPOSITORIO DE GITHUB !!!
 # La URL debe apuntar al contenido "raw" (crudo).
-GITHUB_RAW_URL = "https://raw.githubusercontent.com/tu_usuario/tu_repositorio/main/"
+GITHUB_RAW_URL = "https://raw.githubusercontent.com/alberto29117/horse_racing_app/main/"
 
 # --- CARGA DE RECURSOS DESDE GITHUB ---
 
