@@ -163,9 +163,12 @@ def run_ai_analysis(race_data):
 
     for race in race_data:
         current_course = race.get('course', 'Unknown')
+        current_off_time = race.get('off_time', 'N/A')
+
         for runner in race.get('runners', []):
             # Añadir/estandarizar campos ANTES de usarlos
             runner['course'] = current_course
+            runner['off_time'] = current_off_time # <-- CORRECCIÓN
             runner['jockey_name'] = runner.pop('jockey', 'Unknown')
             runner['trainer_name'] = runner.pop('trainer', 'Unknown')
             
@@ -175,7 +178,7 @@ def run_ai_analysis(race_data):
                 'trainer_name': runner.get('trainer_name', 'N/A'),
                 'course': runner.get('course', 'N/A'),
                 'race_date': race.get('date', 'N/A'),
-                'race_time': race.get('off_time', 'N/A')
+                'race_time': runner.get('off_time', 'N/A')
             }
             
             prompt_caballo = PROMPT_TEMPLATES["caballo"].format(**runner_info)
