@@ -53,10 +53,10 @@ PROMPT_TEMPLATES = {
     "sinergia": load_prompt_from_github("prompt_sinergia.txt"),
 }
 
-# --- CONFIGURACIÓN DE SECRETOS Y BASE DE DATOS (VERSIÓN CORREGIDA) ---
+# --- CONFIGURACIÓN DE SECRETOS Y BASE DE DATOS (VERSIÓN CORREGIDA FINAL) ---
 
 try:
-    # Cargar claves directamente (estructura plana)
+    # Cargar claves directamente (estructura plana, como en tu secrets.toml)
     RACING_API_KEY = st.secrets["RACING_API_KEY"]
     GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
     APP_USERNAME = st.secrets["APP_USERNAME"]
@@ -68,7 +68,7 @@ try:
         # Si el host ya es una URL de conexión completa, la usamos directamente.
         DATABASE_URL = DB_HOST
     else:
-        # Si no, la construimos como antes.
+        # Si no, la construimos como antes (esto es un respaldo).
         DB_USER = st.secrets["DB_USER"]
         DB_PASSWORD = st.secrets["DB_PASSWORD"]
         DB_PORT = st.secrets["DB_PORT"]
