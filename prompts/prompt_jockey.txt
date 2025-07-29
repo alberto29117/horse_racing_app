@@ -1,28 +1,32 @@
-Realiza un análisis exhaustivo y basado en datos exclusivamente sobre el jockey utilizando y comparando información de fuentes fiables como Sporting Life, Timeform, At The Races y Racing Post. LA INFORMACION NO PUEDE SER INVENTADA, debe ser contrastada en al menos 3 de esas páginas indicadas anteriormente.
-
-Enfócate exclusivamente en el perfil y rendimiento del jockey, [NOMBRE DEL JOCKEY] quien monta a [CABALLO] en [HIPÓDROMO] el día [DIA DE LA CARRERA] a las [HORA DE LA CARRERA] hora local de Reino Unido 
-
-No incluyas información del caballo o entrenador aún. Tu análisis debe incluir 
-OBLIGATORIAMENTE: 
-1. **Estadísticas Generales y de Forma:** 
-* Estadísticas de la temporada actual: número de montas, victorias, porcentaje de éxito (strike rate %) y el beneficio/pérdida a una apuesta fija de 1€ (Level Stakes Profit/Loss). 
-* Estado de forma reciente: su strike rate en los últimos 14 y 30 días. 
-
-2. **Análisis de Especialización:** 
-* Investiga y detalla sus estadísticas específicas en las siguientes condiciones relevantes para la carrera de hoy: 
-* Rendimiento en el hipódromo de [HIPÓDROMO]. 
-* Rendimiento en carreras de tipo "Nursery". 
-* Rendimiento montando potros de 2 años. 
-* Rendimiento en el estado de la pista previsto. 
-* Compara estas estadísticas con su media general para identificar si estas condiciones son favorables o desfavorables para él. 
-
-3. **Estilo de Monta:** 
-* Basado en comentarios de expertos y análisis de carreras, describe su estilo. ¿Es un jockey que juzga bien el ritmo desde la cabeza, es conocido por su fuerza en los finales apretados, o es más bien un jockey táctico?
-
-4. **Historial con el Entrenador:** 
- * Analiza su historial montando para [NOMBRE DEL ENTRENADOR]. Proporciona el número de colaboraciones, victorias y el strike rate de esta combinación específica. ¿Es una asociación habitual y de confianza? Concluye con un veredicto sobre si la elección de este jockey es un factor positivo, negativo o neutro para las opciones del caballo en esta carrera.
- 
-5. **Historial con el Caballo:** 
-* Analiza su historial montando el caballo [NOMBRE DEL CABALLO]. Si se ha producido ya una carrera de este jockey con este caballo, proporciona el número de colaboraciones, victorias y el strike rate de esta combinación específica. ¿Es una asociación habitual y de confianza?. Si no se ha producido pon un mensaje de que es la primera vez que compiten juntos.
-
-Concluye con un veredicto sobre si la elección de este jockey es un factor positivo, negativo o neutro para las opciones del caballo en esta carrera.
+Realiza un análisis exhaustivo y basado en datos exclusivamente sobre el jockey utilizando y comparando información de fuentes fiables como Sporting Life, Timeform, At The Races y Racing Post. LA INFORMACION NO PUEDE SER INVENTADA, debe ser contrastada.
+Enfócate exclusivamente en el perfil y rendimiento del jockey {jockey_name}, quien monta a {horse_name} en {course} el día {race_date} a las {race_time} hora local de Reino Unido.
+Tu análisis debe devolver un JSON con la siguiente estructura exacta:
+{{
+  "estadisticas_generales": {{
+    "montas_temporada": int,
+    "victorias_temporada": int,
+    "strike_rate_temporada": float,
+    "lsp_temporada": float,
+    "strike_rate_14_dias": float,
+    "strike_rate_30_dias": float
+  }},
+  "analisis_especializacion": {{
+    "record_hipodromo": "string",
+    "record_tipo_carrera": "string",
+    "record_edad_caballo": "string",
+    "record_terreno": "string"
+  }},
+  "estilo_monta": "string",
+  "historial_entrenador": {{
+    "colaboraciones": int,
+    "victorias": int,
+    "strike_rate": float
+  }},
+  "historial_caballo": {{
+    "primera_vez": boolean,
+    "colaboraciones": int,
+    "victorias": int,
+    "strike_rate": float
+  }},
+  "veredicto_final": "string"
+}}
