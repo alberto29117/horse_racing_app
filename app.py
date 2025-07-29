@@ -322,9 +322,10 @@ with tab1:
                     runners = race.get('runners', [])
                     if runners:
                         df = pd.DataFrame(runners)
-                        # CORRECCIÓN: Eliminar columnas duplicadas antes de mostrar
-                        df = df.loc[:, ~df.columns.duplicated()]
+                        # CORRECCIÓN: Primero renombramos y LUEGO eliminamos duplicados para evitar el error.
                         df.rename(columns={'jockey': 'jockey_name', 'trainer': 'trainer_name'}, inplace=True)
+                        df = df.loc[:, ~df.columns.duplicated()]
+                        
                         display_cols = ['horse', 'jockey_name', 'trainer_name', 'age', 'sex']
                         cols_to_show = [col for col in display_cols if col in df.columns]
                         st.dataframe(df[cols_to_show])
