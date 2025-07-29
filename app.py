@@ -168,7 +168,7 @@ def run_ai_analysis(race_data):
         for runner in race.get('runners', []):
             # Añadir/estandarizar campos ANTES de usarlos
             runner['course'] = current_course
-            runner['off_time'] = current_off_time # <-- CORRECCIÓN
+            runner['off_time'] = current_off_time
             runner['jockey_name'] = runner.pop('jockey', 'Unknown')
             runner['trainer_name'] = runner.pop('trainer', 'Unknown')
             
@@ -267,43 +267,63 @@ if st.sidebar.button("Paso 1: Obtener Carreras de Mañana"):
         race_data = fetch_racing_data()
         if race_data:
             st.session_state.race_data = race_data
+            # Limpiar datos antiguos de análisis si se obtienen nuevas carreras
+            if 'enriched_runners_df' in st.session_state:
+                del st.session_state.enriched_runners_df
             store_data_in_db(race_data)
         else:
             st.error("No se pudieron obtener datos de las carreras.")
 
 if 'race_data' in st.session_state:
     st.subheader("Carreras Obtenidas para Mañana")
-    for race in st.session_state.race_data:
-        with st.expander(f"📍 {race.get('course', 'N/A')} {race.get('off_time', '')} - {race.get('race_name', 'N/A')}"):
-            runners = race.get('runners', [])
-            if runners:
-                # CORRECCIÓN: Crear DataFrame, renombrar columnas y mostrar de forma segura
-                df = pd.DataFrame(runners)
-                df.rename(columns={'jockey': 'jockey_name', 'trainer': 'trainer_name'}, inplace=True)
-                
-                display_cols = ['horse', 'jockey_name', 'trainer_name', 'age', 'sex']
-                # Filtrar para mostrar solo las columnas que existen en el DataFrame
-                cols_to_show = [col for col in display_cols if col in df.columns]
-                
-                st.dataframe(df[cols_to_show])
-            else:
-                st.write("No hay corredores para esta carrera.")
     
+    # Determinar qué datos mostrar: los enriquecidos o los básicos
+    if 'enriched_runners_df' in st.session_state:
+        # Mostrar datos después del análisis, incluyendo la cuota de la IA
+        display_df = st.session_state.enriched_runners_df.copy()
+        display_df.rename(columns={'cuota_mercado': 'Cuota (IA)'}, inplace=True)
+        cols_to_show = ['horse', 'jockey_name', 'trainer_name', 'age', 'sex', 'Cuota (IA)']
+        
+        for race_id, group in display_df.groupby(['course', 'off_time', 'race_name']):
+            course, off_time, race_name = race_id
+            with st.expander(f"📍 {course} {off_time} - {race_name}"):
+                st.dataframe(group[cols_to_show])
+    else:
+        # Mostrar datos básicos antes del análisis
+        for race in st.session_state.race_data:
+            with st.expander(f"📍 {race.get('course', 'N/A')} {race.get('off_time', '')} - {race.get('race_name', 'N/A')}"):
+                runners = race.get('runners', [])
+                if runners:
+                    df = pd.DataFrame(runners)
+                    df.rename(columns={'jockey': 'jockey_name', 'trainer': 'trainer_name'}, inplace=True)
+                    display_cols = ['horse', 'jockey_name', 'trainer_name', 'age', 'sex']
+                    cols_to_show = [col for col in display_cols if col in df.columns]
+                    st.dataframe(df[cols_to_show])
+                else:
+                    st.write("No hay corredores para esta carrera.")
+
     st.sidebar.markdown("---")
     if st.sidebar.button("Paso 2 y 3: Analizar y Generar Apuestas"):
         enriched_runners = run_ai_analysis(st.session_state.race_data)
         if enriched_runners:
-            # Crear el DataFrame
+            # Crear y almacenar el DataFrame enriquecido en la sesión
             runners_df = pd.DataFrame(enriched_runners)
-            # Rellenar NaNs para ser más robusto
             runners_df.fillna({
                 'official_rating': 0, 'age': 0, 'weight_lbs': 0, 
                 'swot_balance_score': 0, 'course': 'Unknown', 
                 'jockey_name': 'Unknown', 'trainer_name': 'Unknown', 'in_running_comment': ''
             }, inplace=True)
             
+            # Añadir race_name para poder agrupar después
+            race_name_map = { (r['course'], r['off_time']): r['race_name'] for r in st.session_state.race_data }
+            runners_df['race_name'] = runners_df.apply(lambda row: race_name_map.get((row['course'], row['off_time']), 'N/A'), axis=1)
+
+            st.session_state.enriched_runners_df = runners_df
+            
             final_bets = generate_value_bets(runners_df)
             st.session_state.final_bets = final_bets
+            # Forzar un refresco de la página para mostrar las nuevas tablas
+            st.rerun()
         else:
             st.warning("No se pudieron analizar los corredores.")
 
