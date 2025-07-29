@@ -132,7 +132,11 @@ def call_gemini_api(prompt):
         response = model.generate_content(prompt)
         return response.text
     except Exception as e:
-        st.error(f"Error al contactar la API de Gemini. Verifica tu API Key. Error: {e}")
+        # Si el error es de cuota, lo mostramos de forma más clara
+        if "429" in str(e):
+             st.error(f"Límite de cuota de la API de Gemini alcanzado. El proceso se reanudará en breve. Error: {e}")
+        else:
+            st.error(f"Error al contactar la API de Gemini. Verifica tu API Key. Error: {e}")
         return "{}"
 
 def run_ai_analysis(race_data):
@@ -150,7 +154,6 @@ def run_ai_analysis(race_data):
             runner['jockey_name'] = runner.pop('jockey', 'Unknown')
             runner['trainer_name'] = runner.pop('trainer', 'Unknown')
             
-            # CORRECCIÓN: Asegurarse de que las claves del diccionario coinciden con los placeholders del prompt
             runner_info = {
                 'horse_name': runner.get('horse', 'N/A'),
                 'jockey_name': runner.get('jockey_name', 'N/A'),
@@ -178,6 +181,9 @@ def run_ai_analysis(race_data):
             
             processed_runners += 1
             progress_bar.progress(processed_runners / total_runners)
+            
+            # Pausa eliminada para usuarios con planes de pago
+            # time.sleep(12) 
             
     st.success("Análisis con IA completado.")
     return all_runners_data
