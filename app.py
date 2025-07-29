@@ -193,7 +193,8 @@ def run_ai_analysis(race_data):
             processed_runners += 1
             progress_bar.progress(processed_runners / total_runners)
             
-            time.sleep(1.5) 
+            # Pausa ajustada para plan de pago (Tier 1 - 60 RPM)
+            time.sleep(1.1) 
             
     st.success("Análisis con IA completado.")
     return all_runners_data
