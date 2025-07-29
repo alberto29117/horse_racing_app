@@ -182,8 +182,8 @@ def run_ai_analysis(race_data):
             processed_runners += 1
             progress_bar.progress(processed_runners / total_runners)
             
-            # Pausa eliminada para usuarios con planes de pago
-            # time.sleep(12) 
+            # CORRECCIÓN: Pausa conservadora para asegurar no exceder los límites de la API de pago
+            time.sleep(3) 
             
     st.success("Análisis con IA completado.")
     return all_runners_data
