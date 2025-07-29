@@ -149,7 +149,7 @@ def call_gemini_api(prompt):
     return json.dumps(mock_response)
 
 def run_ai_analysis(race_data):
-    """Itera sobre los corredores y enriquece los datos con análisis de IA."""
+    """Itera sobre los corredores, los enriquece con datos de la IA y estandariza los campos."""
     if any(not template for template in PROMPT_TEMPLATES.values()):
         st.error("No se pudo continuar con el análisis porque faltan los prompts. Revisa las URLs en GitHub.")
         return []
@@ -162,12 +162,18 @@ def run_ai_analysis(race_data):
     all_runners_data = []
 
     for race in race_data:
+        current_course = race.get('course', 'Unknown')
         for runner in race.get('runners', []):
+            # Añadir/estandarizar campos ANTES de usarlos
+            runner['course'] = current_course
+            runner['jockey_name'] = runner.pop('jockey', 'Unknown')
+            runner['trainer_name'] = runner.pop('trainer', 'Unknown')
+            
             runner_info = {
                 'horse_name': runner.get('horse', 'N/A'),
-                'jockey_name': runner.get('jockey', 'N/A'),
-                'trainer_name': runner.get('trainer', 'N/A'),
-                'course': race.get('course', 'N/A'),
+                'jockey_name': runner.get('jockey_name', 'N/A'),
+                'trainer_name': runner.get('trainer_name', 'N/A'),
+                'course': runner.get('course', 'N/A'),
                 'race_date': race.get('date', 'N/A'),
                 'race_time': race.get('off_time', 'N/A')
             }
@@ -182,8 +188,12 @@ def run_ai_analysis(race_data):
                     runner['cuota_mercado'] = ai_data.get('perfil', {}).get('cuota_betfair', 999.0)
                     runner['swot_balance_score'] = ai_data.get('synergy_analysis', {}).get('swot_balance_score', 0)
                     runner['in_running_comment'] = ai_data.get('analisis_forma', [{}])[0].get('comentario_in_running', '')
+                    
+                    # Añadir datos simulados para el modelo
                     runner['official_rating'] = runner.get('official_rating', np.random.randint(70, 100))
                     runner['weight_lbs'] = runner.get('weight_lbs', np.random.randint(120, 140))
+                    runner['age'] = pd.to_numeric(runner.get('age'), errors='coerce')
+
                     all_runners_data.append(runner)
                 except json.JSONDecodeError:
                     st.warning(f"La respuesta de la IA para {runner.get('horse')} no es un JSON válido.")
@@ -200,7 +210,14 @@ def generate_value_bets(runners_df):
         st.error("El modelo no está cargado. No se pueden generar apuestas.")
         return []
     
-    features_for_model = runners_df[['official_rating', 'age', 'weight_lbs', 'swot_balance_score', 'course', 'jockey_name', 'trainer_name', 'in_running_comment']]
+    # Asegurar que todas las columnas necesarias para el modelo existen
+    required_features = ['official_rating', 'age', 'weight_lbs', 'swot_balance_score', 'course', 'jockey_name', 'trainer_name', 'in_running_comment']
+    for feature in required_features:
+        if feature not in runners_df.columns:
+            st.error(f"Error Interno: La columna '{feature}' es necesaria para la predicción y no se encontró.")
+            return []
+
+    features_for_model = runners_df[required_features]
     
     try:
         probabilities = model_pipeline.predict_proba(features_for_model)
@@ -257,7 +274,7 @@ if 'race_data' in st.session_state:
         with st.expander(f"📍 {race.get('course', 'N/A')} {race.get('off_time', '')} - {race.get('race_name', 'N/A')}"):
             runners = race.get('runners', [])
             if runners:
-                st.dataframe(pd.DataFrame(runners)[['horse', 'jockey', 'trainer', 'age', 'sex']])
+                st.dataframe(pd.DataFrame(runners)[['horse', 'jockey_name', 'trainer_name', 'age', 'sex']])
             else:
                 st.write("No hay corredores para esta carrera.")
     
@@ -265,11 +282,15 @@ if 'race_data' in st.session_state:
     if st.sidebar.button("Paso 2 y 3: Analizar y Generar Apuestas"):
         enriched_runners = run_ai_analysis(st.session_state.race_data)
         if enriched_runners:
-            runners_df = pd.DataFrame(enriched_runners).fillna({
+            # Crear el DataFrame
+            runners_df = pd.DataFrame(enriched_runners)
+            # Rellenar NaNs para ser más robusto
+            runners_df.fillna({
                 'official_rating': 0, 'age': 0, 'weight_lbs': 0, 
                 'swot_balance_score': 0, 'course': 'Unknown', 
                 'jockey_name': 'Unknown', 'trainer_name': 'Unknown', 'in_running_comment': ''
-            })
+            }, inplace=True)
+            
             final_bets = generate_value_bets(runners_df)
             st.session_state.final_bets = final_bets
         else:
