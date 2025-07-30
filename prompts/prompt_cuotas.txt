@@ -15,11 +15,3 @@ Tu tarea es actuar como un extractor de datos de cuotas de carreras de caballos.
 2.  Si la cuota está en formato fraccional (ej: 7/2), CONVIÉRTELA a formato decimal (ej: 4.5).
 3.  Si es absolutamente imposible encontrar la cuota para un caballo, simplemente omítelo del JSON final.
 4.  No incluyas ningún otro texto, explicación o análisis en tu respuesta. Solo el objeto JSON.
-
-**Ejemplo de respuesta esperada:**
-```json
-{
-  "Horse_A": 5.5,
-  "Horse_B": 11.0,
-  "Horse_C": 4.0
-}
