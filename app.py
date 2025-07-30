@@ -193,7 +193,6 @@ def run_ai_analysis(race_data):
             processed_runners += 1
             progress_bar.progress(processed_runners / total_runners)
             
-            # Pausa ajustada para plan de pago (Tier 1 - 60 RPM)
             time.sleep(1.1) 
             
     st.success("Análisis con IA completado.")
@@ -307,7 +306,6 @@ with tab1:
         
         if 'enriched_runners_df' in st.session_state:
             display_df = st.session_state.enriched_runners_df.copy()
-            # CORRECCIÓN: Eliminar columnas duplicadas antes de mostrar
             display_df = display_df.loc[:, ~display_df.columns.duplicated()]
             display_df.rename(columns={'cuota_mercado': 'Cuota (IA)'}, inplace=True)
             cols_to_show = ['horse', 'jockey_name', 'trainer_name', 'age', 'sex', 'Cuota (IA)']
@@ -323,7 +321,6 @@ with tab1:
                     runners = race.get('runners', [])
                     if runners:
                         df = pd.DataFrame(runners)
-                        # CORRECCIÓN: Primero renombramos y LUEGO eliminamos duplicados para evitar el error.
                         df.rename(columns={'jockey': 'jockey_name', 'trainer': 'trainer_name'}, inplace=True)
                         df = df.loc[:, ~df.columns.duplicated()]
                         
@@ -333,36 +330,40 @@ with tab1:
                     else:
                         st.write("No hay corredores para esta carrera.")
     
-    if 'final_bets' in st.session_state and st.session_state.final_bets:
-        st.subheader("Apuestas Recomendadas para Hoy")
-        
-        with st.form("bets_form"):
-            for i, bet in enumerate(st.session_state.final_bets):
-                st.markdown(f"**{bet['horse_name']}** - {bet['course']} {bet['time']}")
-                col1, col2, col3 = st.columns(3)
-                col1.metric("Tipo de Apuesta", bet['stake_type'])
-                col2.metric("Cuota IA", f"{bet['ia_odds']:.2f}")
-                st.session_state.final_bets[i]['placed_odds'] = col3.number_input("Cuota Apostada", min_value=1.0, value=bet['ia_odds'], step=0.1, key=f"odds_{i}")
-                st.divider()
+    if 'final_bets' in st.session_state:
+        # CORRECCIÓN: Añadir un bloque 'else' para dar feedback si no se encuentran apuestas.
+        if st.session_state.final_bets:
+            st.subheader("Apuestas Recomendadas para Hoy")
             
-            if st.form_submit_button("Guardar Apuestas Realizadas"):
-                new_bets = []
-                for bet in st.session_state.final_bets:
-                    bet_id = f"{int(time.time())}-{bet['horse_name']}"
-                    new_bet = {
-                        'bet_id': bet_id, 'horse_name': bet['horse_name'],
-                        'course': bet['course'], 'time': bet['time'],
-                        'stake_type': bet['stake_type'], 'stake_points': bet['stake_points'],
-                        'ia_odds': bet['ia_odds'], 'placed_odds': bet['placed_odds'],
-                        'status': 'Pendiente', 'pnl': 0.0
-                    }
-                    new_bets.append(new_bet)
+            with st.form("bets_form"):
+                for i, bet in enumerate(st.session_state.final_bets):
+                    st.markdown(f"**{bet['horse_name']}** - {bet['course']} {bet['time']}")
+                    col1, col2, col3 = st.columns(3)
+                    col1.metric("Tipo de Apuesta", bet['stake_type'])
+                    col2.metric("Cuota IA", f"{bet['ia_odds']:.2f}")
+                    st.session_state.final_bets[i]['placed_odds'] = col3.number_input("Cuota Apostada", min_value=1.0, value=bet['ia_odds'], step=0.1, key=f"odds_{i}")
+                    st.divider()
                 
-                new_bets_df = pd.DataFrame(new_bets)
-                st.session_state.historical_bets = pd.concat([st.session_state.historical_bets, new_bets_df], ignore_index=True)
-                st.success(f"{len(new_bets)} apuestas guardadas con éxito.")
-                del st.session_state.final_bets
-                st.rerun()
+                if st.form_submit_button("Guardar Apuestas Realizadas"):
+                    new_bets = []
+                    for bet in st.session_state.final_bets:
+                        bet_id = f"{int(time.time())}-{bet['horse_name']}"
+                        new_bet = {
+                            'bet_id': bet_id, 'horse_name': bet['horse_name'],
+                            'course': bet['course'], 'time': bet['time'],
+                            'stake_type': bet['stake_type'], 'stake_points': bet['stake_points'],
+                            'ia_odds': bet['ia_odds'], 'placed_odds': bet['placed_odds'],
+                            'status': 'Pendiente', 'pnl': 0.0
+                        }
+                        new_bets.append(new_bet)
+                    
+                    new_bets_df = pd.DataFrame(new_bets)
+                    st.session_state.historical_bets = pd.concat([st.session_state.historical_bets, new_bets_df], ignore_index=True)
+                    st.success(f"{len(new_bets)} apuestas guardadas con éxito.")
+                    del st.session_state.final_bets
+                    st.rerun()
+        else:
+            st.success("Análisis completado. No se encontraron apuestas de valor que cumplan los criterios para hoy.")
 
 # --- PESTAÑA 2: GESTIONAR APUESTAS PENDIENTES ---
 with tab2:
