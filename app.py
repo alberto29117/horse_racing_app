@@ -59,6 +59,8 @@ PROMPT_TEMPLATES = {
     "jockey": load_prompt_from_github("prompt_jockey.txt"),
     "entrenador": load_prompt_from_github("prompt_entrenador.txt"),
     "sinergia": load_prompt_from_github("prompt_sinergia.txt"),
+    # --- NUEVO --- Añadimos la plantilla para obtener las cuotas.
+    "cuotas": load_prompt_from_github("prompt_cuotas.txt"),
 }
 
 # --- CONFIGURACIÓN DE SECRETOS Y BASE DE DATOS ---
@@ -126,8 +128,6 @@ def call_gemini_api(prompt):
         genai.configure(api_key=GEMINI_API_KEY)
         generation_config = {"response_mime_type": "application/json"}
         
-        # SOLUCIÓN DEFINITIVA: Reactivar la herramienta de búsqueda de Google.
-        # Esto funcionará ahora que 'requirements.txt' fuerza una versión reciente de la librería.
         tools = [genai.Tool(google_search_retrieval=genai.GoogleSearchRetrieval())]
         
         model = genai.GenerativeModel(
@@ -150,12 +150,66 @@ def call_gemini_api(prompt):
             st.error(f"Error al contactar la API de Gemini. Verifica tu API Key. Error: {e}")
         return "{}"
 
-def run_ai_analysis(race_data, debug_mode=False, test_mode=False, debug_json=False):
+# --- NUEVO --- Función para obtener las cuotas de mercado como primer paso.
+def fetch_market_odds(race_data, test_mode=False):
+    """
+    Itera sobre las carreras, obtiene las cuotas de mercado para todos los caballos
+    usando un prompt específico y devuelve un diccionario con las cuotas.
+    """
+    st.info("Iniciando obtención de cuotas de mercado...")
+    progress_bar = st.progress(0)
+    
+    data_to_process = race_data[:4] if test_mode else race_data
+    total_races = len(data_to_process)
+    all_odds = {}
+
+    prompt_template = PROMPT_TEMPLATES.get("cuotas")
+    if not prompt_template:
+        st.error("No se encontró la plantilla de prompt 'prompt_cuotas.txt'.")
+        return {}
+
+    for i, race in enumerate(data_to_process):
+        if not isinstance(race.get('runners'), list) or not race.get('runners'):
+            continue
+
+        horse_list = "\n".join([f"- {runner['horse']}" for runner in race['runners']])
+        
+        race_info = {
+            'course': race.get('course', 'N/A'),
+            'race_date': race.get('date', 'N/A'),
+            'race_time': race.get('off_time', 'N/A'),
+            'horse_list': horse_list
+        }
+        
+        prompt = prompt_template.format(**race_info)
+        
+        try:
+            ai_response_str = call_gemini_api(prompt)
+            odds_data = json.loads(ai_response_str)
+            
+            # Guardamos las cuotas con una clave única por carrera y caballo
+            for horse_name, odds in odds_data.items():
+                key = (race_info['course'], race_info['race_time'], horse_name)
+                all_odds[key] = float(odds)
+
+        except json.JSONDecodeError:
+            st.warning(f"No se pudo decodificar la respuesta JSON de las cuotas para la carrera en {race_info['course']} a las {race_info['race_time']}.")
+        except Exception as e:
+            st.error(f"Error obteniendo cuotas para {race_info['course']}: {e}")
+        
+        progress_bar.progress((i + 1) / total_races)
+        time.sleep(1.1) # Respetar límites de la API
+
+    st.success("Obtención de cuotas de mercado completada.")
+    return all_odds
+
+# --- MODIFICADO --- La función ahora recibe las cuotas de mercado.
+def run_ai_analysis(race_data, market_odds, debug_mode=False, test_mode=False, debug_json=False):
     """Itera sobre los corredores, los enriquece con datos de la IA y estandariza los campos."""
     
     data_to_process = race_data[:4] if test_mode else race_data
 
-    # --- Lógica de Depuración ---
+    # --- Lógica de Depuración (sin cambios) ---
     if debug_mode or debug_json:
         st.info("--- MODO DEPURACIÓN ACTIVADO ---")
         if data_to_process and data_to_process[0].get('runners'):
@@ -190,7 +244,7 @@ def run_ai_analysis(race_data, debug_mode=False, test_mode=False, debug_json=Fal
             return None
 
     # --- Flujo normal de análisis ---
-    st.info("Iniciando análisis con IA. Este proceso puede tardar varios minutos...")
+    st.info("Iniciando análisis detallado con IA. Este proceso puede tardar varios minutos...")
     progress_bar = st.progress(0)
     total_runners = sum(len(race.get('runners', [])) for race in data_to_process if race.get('runners'))
     processed_runners = 0
@@ -212,6 +266,10 @@ def run_ai_analysis(race_data, debug_mode=False, test_mode=False, debug_json=Fal
                 runner_clean['jockey_name'] = runner_clean.pop('jockey', 'Unknown')
                 runner_clean['trainer_name'] = runner_clean.pop('trainer', 'Unknown')
                 
+                # --- MODIFICADO --- Usamos las cuotas obtenidas en el paso previo.
+                key = (runner_clean['course'], runner_clean['off_time'], runner_clean['horse'])
+                runner_clean['cuota_mercado'] = market_odds.get(key, 999.0) # 999.0 como fallback
+
                 runner_info = {
                     'horse_name': runner_clean.get('horse', 'N/A'), 'jockey_name': runner_clean.get('jockey_name', 'N/A'),
                     'trainer_name': runner_clean.get('trainer_name', 'N/A'), 'course': runner_clean.get('course', 'N/A'),
@@ -226,10 +284,8 @@ def run_ai_analysis(race_data, debug_mode=False, test_mode=False, debug_json=Fal
                     perfil_data = ai_data.get('perfil') or {}
                     synergy_data = ai_data.get('synergy_analysis') or {}
                     analisis_forma_list = ai_data.get('analisis_forma') or []
-
-                    cuota = perfil_data.get('cuota_odds')
-                    runner_clean['cuota_mercado'] = cuota if cuota else 999.0
                     
+                    # La cuota de mercado ya la tenemos, esta parte se simplifica.
                     runner_clean['swot_balance_score'] = synergy_data.get('swot_balance_score', 0)
                     
                     if analisis_forma_list:
@@ -335,27 +391,34 @@ with tab1:
         debug_mode = st.checkbox("Depurar Prompt", value=False, disabled=is_disabled)
         debug_json = st.checkbox("Depurar Respuesta JSON", value=False, disabled=is_disabled)
         
+        # --- MODIFICADO --- Lógica del botón de análisis actualizada.
         if st.button("Paso 2: Analizar y Generar Apuestas", use_container_width=True, disabled=is_disabled):
-            with st.spinner("Analizando con IA y generando predicciones..."):
-                try:
-                    enriched_runners = run_ai_analysis(st.session_state.race_data, debug_mode=debug_mode, test_mode=test_mode, debug_json=debug_json)
-                    
-                    if enriched_runners is not None:
-                        st.success("Fase de análisis con IA completada.")
-                        if enriched_runners:
-                            runners_df = pd.DataFrame(enriched_runners)
-                            runners_df.fillna(0, inplace=True)
-                            
-                            race_name_map = { (r['course'], r['off_time']): r.get('race_name', 'N/A') for r in st.session_state.race_data }
-                            runners_df['race_name'] = runners_df.apply(lambda row: race_name_map.get((row['course'], row['off_time']), 'N/A'), axis=1)
+            try:
+                # Paso 2.1: Obtener cuotas de mercado primero
+                market_odds = fetch_market_odds(st.session_state.race_data, test_mode=test_mode)
+                
+                if not market_odds:
+                    st.warning("No se pudieron obtener las cuotas de mercado. El análisis detallado podría ser menos preciso.")
+                
+                # Paso 2.2: Ejecutar el análisis detallado con las cuotas ya obtenidas
+                enriched_runners = run_ai_analysis(st.session_state.race_data, market_odds, debug_mode=debug_mode, test_mode=test_mode, debug_json=debug_json)
+                
+                if enriched_runners is not None:
+                    st.success("Fase de análisis con IA completada.")
+                    if enriched_runners:
+                        runners_df = pd.DataFrame(enriched_runners)
+                        runners_df.fillna(0, inplace=True)
+                        
+                        race_name_map = { (r['course'], r['off_time']): r.get('race_name', 'N/A') for r in st.session_state.race_data }
+                        runners_df['race_name'] = runners_df.apply(lambda row: race_name_map.get((row['course'], row['off_time']), 'N/A'), axis=1)
 
-                            st.session_state.enriched_runners_df = runners_df
-                            st.session_state.final_bets = generate_value_bets(runners_df)
-                            st.rerun()
-                        else:
-                            st.warning("Análisis completado, pero no se pudieron procesar los datos de los corredores.")
-                except Exception as e:
-                    st.error(f"Ha ocurrido un error fatal durante el análisis: {e}")
+                        st.session_state.enriched_runners_df = runners_df
+                        st.session_state.final_bets = generate_value_bets(runners_df)
+                        st.rerun()
+                    else:
+                        st.warning("Análisis completado, pero no se pudieron procesar los datos de los corredores.")
+            except Exception as e:
+                st.error(f"Ha ocurrido un error fatal durante el análisis: {e}")
 
     st.divider()
 
@@ -365,8 +428,8 @@ with tab1:
         if 'enriched_runners_df' in st.session_state:
             display_df = st.session_state.enriched_runners_df.copy()
             display_df = display_df.loc[:, ~display_df.columns.duplicated()]
-            display_df.rename(columns={'cuota_mercado': 'Cuota (IA)'}, inplace=True)
-            cols_to_show = ['horse', 'jockey_name', 'trainer_name', 'age', 'sex', 'Cuota (IA)']
+            display_df.rename(columns={'cuota_mercado': 'Cuota Mercado'}, inplace=True)
+            cols_to_show = ['horse', 'jockey_name', 'trainer_name', 'age', 'sex', 'Cuota Mercado']
             
             for race_id, group in display_df.groupby(['course', 'off_time', 'race_name']):
                 course, off_time, race_name = race_id
@@ -397,7 +460,7 @@ with tab1:
                     st.markdown(f"**{bet['horse_name']}** - {bet['course']} {bet['time']}")
                     col1, col2, col3 = st.columns(3)
                     col1.metric("Tipo de Apuesta", bet['stake_type'])
-                    col2.metric("Cuota IA", f"{bet['ia_odds']:.2f}")
+                    col2.metric("Cuota Mercado", f"{bet['ia_odds']:.2f}")
                     st.session_state.final_bets[i]['placed_odds'] = col3.number_input("Cuota Apostada", min_value=1.0, value=bet['ia_odds'], step=0.1, key=f"odds_{i}")
                     st.divider()
                 
