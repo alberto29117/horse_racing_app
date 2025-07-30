@@ -9,7 +9,6 @@ Tu análisis debe devolver un JSON con la siguiente estructura exacta:
 "entrenador": "string",
 "jockey_declarado": "string",
 "pedigri": "string",
-"cuota_odds": float
 }},
 "ratings": {{
 "rating_oficial": int,
@@ -47,5 +46,3 @@ Tu análisis debe devolver un JSON con la siguiente estructura exacta:
 }},
 "conclusion_potencial": "string"
 }}
-
-INSTRUCCIÓN CRÍTICA PARA EL CAMPO "cuota_odds": Tu tarea principal es rellenar este campo con la "Cuota actual del caballo para la carrera". Busca esta información (Current Odds/Price) en las fuentes mencionadas, puede que aparezcan en una columna de Odds (por ejemplo en la fuente "RacingPost" o puede tambien que  en cada caballo aparezca la cuota a su derecha como en la fuente "attheraces". Busca la cuota en vivo. Si la cuota está en formato fraccional (ej: 7/2), CONVIÉRTELA a formato decimal (ej: 4.5). El valor en el JSON siempre debe ser un número decimal (float). Si es absolutamente imposible encontrar una cuota, devuelve el valor null.
