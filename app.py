@@ -398,6 +398,16 @@ if not check_password():
 st.sidebar.success("Sesión iniciada con éxito.")
 st.sidebar.markdown("---")
 
+# --- NUEVO --- Botón para limpiar la caché manualmente
+if st.sidebar.button("Limpiar Caché y Recargar Prompts"):
+    st.cache_data.clear()
+    st.cache_resource.clear()
+    st.success("Caché limpiada. Los prompts se recargarán en el próximo análisis.")
+    time.sleep(2) # Pausa para que el usuario lea el mensaje
+    st.rerun()
+
+st.sidebar.markdown("---") 
+
 tab1, tab2, tab3, tab4 = st.tabs(["Análisis Diario", "Gestionar Apuestas Pendientes", "Historial de Resultados", "Rendimiento General"])
 
 # --- PESTAÑA 1: ANÁLISIS DIARIO ---
