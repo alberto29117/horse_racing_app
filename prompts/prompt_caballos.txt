@@ -1,49 +1,51 @@
-Realiza un análisis exhaustivo y basado en datos exclusivamente sobre el caballo utilizando y comparando información de fuentes fiables como Sporting Life, Timeform, At The Races y Racing Post. LA INFORMACION NO PUEDE SER INVENTADA, debe ser contrastada en al menos 3 de esas páginas indicadas anteriormente.
+Realiza un análisis exhaustivo y basado en datos exclusivamente sobre el caballo utilizando y comparando información de fuentes fiables como Sporting Life, Timeform, At The Races y Racing Post. LA INFORMACION NO PUEDE SER INVENTADA, debe ser contrastada.
 Enfócate exclusivamente en el perfil y rendimiento del caballo {horse_name}, que compite en {course} el día {race_date} a las {race_time} hora local de Reino Unido.
-No incluyas información del jockey o entrenador aún. Tu análisis debe devolver un JSON con la siguiente estructura:
+Tu análisis debe devolver un JSON con la siguiente estructura exacta:
 {{
-  "perfil": {{
-    "edad": int,
-    "sexo": "string",
-    "propietario": "string",
-    "entrenador": "string",
-    "jockey_declarado": "string",
-    "pedigri": "string",
-    "cuota_betfair": float
-  }},
-  "ratings": {{
-    "rating_oficial": int,
-    "ultimas_5_carreras_rpr_topspeed": [
-      {{"rpr": int, "topspeed": int}},
-      ...
-    ],
-    "timeform_speed_figure_top_2": [int, int]
-  }},
-  "analisis_forma": [
-    {{
-      "hipodromo": "string",
-      "distancia": "string",
-      "going": "string",
-      "posicion_final": "string",
-      "comentario_in_running": "string"
-    }},
-    ...
-  ],
-  "perfil_velocidad_ritmo": {{
-    "estilo_carrera": "string",
-    "adaptabilidad_distancia": "string",
-    "adaptabilidad_hipodromo": "string",
-    "adaptabilidad_terreno": "string"
-  }},
-  "analisis_pedigri": {{
-    "padre": {{
-      "porcentaje_victorias_distancia_terreno": float,
-      "distancia_media_ganadora": float
-    }},
-    "madre": {{
-      "ha_producido_ganadores": bool,
-      "perfil_corredora": "string"
-    }}
-  }},
-  "conclusion_potencial": "string"
+"perfil": {{
+"edad": int,
+"sexo": "string",
+"propietario": "string",
+"entrenador": "string",
+"jockey_declarado": "string",
+"pedigri": "string",
+"cuota_odds": float
+}},
+"ratings": {{
+"rating_oficial": int,
+"ultimas_5_carreras_rpr_topspeed": [
+{{"rpr": int, "topspeed": int}},
+...
+],
+"timeform_speed_figure_top_2": [int, int]
+}},
+"analisis_forma": [
+{{
+"hipodromo": "string",
+"distancia": "string",
+"going": "string",
+"posicion_final": "string",
+"comentario_in_running": "string"
+}},
+...
+],
+"perfil_velocidad_ritmo": {{
+"estilo_carrera": "string",
+"adaptabilidad_distancia": "string",
+"adaptabilidad_hipodromo": "string",
+"adaptabilidad_terreno": "string"
+}},
+"analisis_pedigri": {{
+"padre": {{
+"porcentaje_victorias_distancia_terreno": float,
+"distancia_media_ganadora": float
+}},
+"madre": {{
+"ha_producido_ganadores": bool,
+"perfil_corredora": "string"
 }}
+}},
+"conclusion_potencial": "string"
+}}
+
+IMPORTANTE: Para el campo "cuota_odds", busca la cuota (Odds) actual del caballo. Si no puedes encontrar una cuota fiable, devuelve el valor null en lugar de 0.
