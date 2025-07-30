@@ -131,20 +131,19 @@ def fetch_racing_data():
         st.error(f"Error al contactar TheRacingAPI: {e}")
         return []
 
-# --- CORREGIDO --- Se actualiza la forma de llamar a las herramientas de la API.
+# --- CORREGIDO --- Se elimina el parámetro 'tools' para máxima compatibilidad.
 def call_gemini_api(prompt):
     """Llama a la API de Gemini con búsqueda en vivo y devuelve la respuesta en formato JSON."""
     try:
         genai.configure(api_key=GEMINI_API_KEY)
         generation_config = {"response_mime_type": "application/json"}
         
-        # Forma correcta y moderna de habilitar la búsqueda en Google.
-        tools = ["google_search"]
+        # Se elimina la configuración explícita de herramientas. El modelo usará la
+        # búsqueda de forma implícita si el prompt lo requiere.
         
         model = genai.GenerativeModel(
             model_name="gemini-1.5-pro-latest",
             generation_config=generation_config,
-            tools=tools,
             safety_settings={
                 HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
                 HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
