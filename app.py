@@ -6,6 +6,7 @@ import joblib
 import time
 import io
 import numpy as np
+import re # --- NUEVO --- Importamos la librería de expresiones regulares
 from sqlalchemy import create_engine
 import google.generativeai as genai
 from datetime import date, timedelta
@@ -84,6 +85,19 @@ except (KeyError, FileNotFoundError) as e:
     st.stop()
 
 # --- FUNCIONES AUXILIARES ---
+
+# --- NUEVO --- Función de normalización para asegurar que los nombres coincidan.
+def normalize_horse_name(name):
+    """Normaliza el nombre de un caballo para una comparación consistente."""
+    if not isinstance(name, str):
+        return ""
+    # Convertir a minúsculas y quitar espacios
+    normalized = name.lower().strip()
+    # Quitar comillas y markdown común
+    normalized = normalized.strip('"\'*_')
+    # Quitar sufijos de país como (IRE), (GB), etc.
+    normalized = re.sub(r'\s*\(\w+\)$', '', normalized).strip()
+    return normalized
 
 def check_password():
     """Devuelve `True` si el usuario ha iniciado sesión."""
@@ -191,11 +205,10 @@ def fetch_market_odds(race_data, test_mode=False):
                 odds_data = json.loads(clean_json_str)
                 
                 for horse_name, odds in odds_data.items():
-                    # --- CORRECCIÓN --- Limpiar el nombre del caballo (la clave del JSON) para
-                    # asegurar que coincida con los datos de TheRacingAPI.
-                    clean_horse_name = horse_name.strip().strip('"')
+                    # --- CORRECCIÓN --- Se aplica la normalización al nombre del caballo
+                    normalized_name = normalize_horse_name(horse_name)
                     
-                    key = (race_info['course'], race_info['race_time'], clean_horse_name)
+                    key = (race_info['course'], race_info['race_time'], normalized_name)
                     all_odds[key] = float(odds)
             else:
                 st.warning(f"No se encontró un JSON válido en la respuesta de cuotas para la carrera en {race_info['course']}.")
@@ -272,7 +285,9 @@ def run_ai_analysis(race_data, market_odds, debug_mode=False, test_mode=False, d
                 runner_clean['jockey_name'] = runner_clean.pop('jockey', 'Unknown')
                 runner_clean['trainer_name'] = runner_clean.pop('trainer', 'Unknown')
                 
-                key = (runner_clean['course'], runner_clean['off_time'], runner_clean['horse'])
+                # --- CORRECCIÓN --- Se normaliza el nombre del caballo de la API para la búsqueda
+                normalized_horse_name = normalize_horse_name(runner_clean['horse'])
+                key = (runner_clean['course'], runner_clean['off_time'], normalized_horse_name)
                 runner_clean['cuota_mercado'] = market_odds.get(key, 999.0)
 
                 runner_info = {
