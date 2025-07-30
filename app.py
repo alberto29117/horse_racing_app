@@ -131,15 +131,11 @@ def fetch_racing_data():
         st.error(f"Error al contactar TheRacingAPI: {e}")
         return []
 
-# --- CORREGIDO --- Se elimina el parámetro 'tools' para máxima compatibilidad.
 def call_gemini_api(prompt):
     """Llama a la API de Gemini con búsqueda en vivo y devuelve la respuesta en formato JSON."""
     try:
         genai.configure(api_key=GEMINI_API_KEY)
         generation_config = {"response_mime_type": "application/json"}
-        
-        # Se elimina la configuración explícita de herramientas. El modelo usará la
-        # búsqueda de forma implícita si el prompt lo requiere.
         
         model = genai.GenerativeModel(
             model_name="gemini-1.5-pro-latest",
@@ -207,7 +203,10 @@ def fetch_market_odds(race_data, test_mode=False):
                 for api_name in api_horse_names:
                     normalized_api_name = normalize_horse_name(api_name)
                     if normalized_api_name in normalized_ai_map:
-                        race_odds[api_name] = float(normalized_ai_map[normalized_api_name])
+                        # --- CORRECCIÓN --- Se comprueba si el valor de la cuota no es nulo.
+                        odds_value = normalized_ai_map[normalized_api_name]
+                        if odds_value is not None:
+                            race_odds[api_name] = float(odds_value)
                     else:
                         st.warning(f"No se encontró coincidencia para el caballo de la API: '{api_name}' (Normalizado: '{normalized_api_name}'). Nombres disponibles en la IA (normalizados): {list(normalized_ai_map.keys())}")
 
