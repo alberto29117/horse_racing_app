@@ -192,7 +192,7 @@ def run_ai_analysis(race_data):
                     synergy_data = ai_data.get('synergy_analysis') or {}
                     analisis_forma_list = ai_data.get('analisis_forma') or []
 
-                    runner_clean['cuota_mercado'] = perfil_data.get('cuota_betfair', 999.0)
+                    runner_clean['cuota_mercado'] = perfil_data.get('cuota_odds', 999.0)
                     runner_clean['swot_balance_score'] = synergy_data.get('swot_balance_score', 0)
                     
                     if analisis_forma_list:
