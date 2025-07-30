@@ -153,20 +153,34 @@ def run_ai_analysis(race_data):
     all_runners_data = []
 
     for race in race_data:
+        # Comprobación de seguridad: si la carrera no tiene corredores, la saltamos.
+        if not race.get('runners'):
+            st.warning(f"La carrera en {race.get('course', 'N/A')} a las {race.get('off_time', 'N/A')} no tiene corredores y será ignorada.")
+            continue
+
         for runner in race.get('runners', []):
             try:
-                runner['course'] = race.get('course', 'Unknown')
-                runner['off_time'] = race.get('off_time', 'N/A')
-                runner['jockey_name'] = runner.pop('jockey', 'Unknown')
-                runner['trainer_name'] = runner.pop('trainer', 'Unknown')
+                # Extraemos solo los datos necesarios para los prompts
+                runner_clean = {
+                    'horse': runner.get('horse'),
+                    'jockey': runner.get('jockey'),
+                    'trainer': runner.get('trainer'),
+                    'age': runner.get('age'),
+                    'sex': runner.get('sex')
+                }
+                
+                runner_clean['course'] = race.get('course', 'Unknown')
+                runner_clean['off_time'] = race.get('off_time', 'N/A')
+                runner_clean['jockey_name'] = runner_clean.pop('jockey', 'Unknown')
+                runner_clean['trainer_name'] = runner_clean.pop('trainer', 'Unknown')
                 
                 runner_info = {
-                    'horse_name': runner.get('horse', 'N/A'),
-                    'jockey_name': runner.get('jockey_name', 'N/A'),
-                    'trainer_name': runner.get('trainer_name', 'N/A'),
-                    'course': runner.get('course', 'N/A'),
+                    'horse_name': runner_clean.get('horse', 'N/A'),
+                    'jockey_name': runner_clean.get('jockey_name', 'N/A'),
+                    'trainer_name': runner_clean.get('trainer_name', 'N/A'),
+                    'course': runner_clean.get('course', 'N/A'),
                     'race_date': race.get('date', 'N/A'),
-                    'race_time': runner.get('off_time', 'N/A')
+                    'race_time': runner_clean.get('off_time', 'N/A')
                 }
                 
                 prompt_caballo = PROMPT_TEMPLATES["caballo"].format(**runner_info)
@@ -175,23 +189,22 @@ def run_ai_analysis(race_data):
                 if ai_response_str:
                     ai_data = json.loads(ai_response_str)
                     
-                    # CORRECCIÓN: Manejo seguro de datos anidados del JSON
                     perfil_data = ai_data.get('perfil') or {}
                     synergy_data = ai_data.get('synergy_analysis') or {}
                     analisis_forma_list = ai_data.get('analisis_forma') or []
 
-                    runner['cuota_mercado'] = perfil_data.get('cuota_betfair', 999.0)
-                    runner['swot_balance_score'] = synergy_data.get('swot_balance_score', 0)
+                    runner_clean['cuota_mercado'] = perfil_data.get('cuota_betfair', 999.0)
+                    runner_clean['swot_balance_score'] = synergy_data.get('swot_balance_score', 0)
                     
                     if analisis_forma_list:
-                        runner['in_running_comment'] = analisis_forma_list[0].get('comentario_in_running', '')
+                        runner_clean['in_running_comment'] = analisis_forma_list[0].get('comentario_in_running', '')
                     else:
-                        runner['in_running_comment'] = ''
+                        runner_clean['in_running_comment'] = ''
 
-                    runner['official_rating'] = runner.get('official_rating', np.random.randint(70, 100))
-                    runner['weight_lbs'] = runner.get('weight_lbs', np.random.randint(120, 140))
-                    runner['age'] = pd.to_numeric(runner.get('age'), errors='coerce')
-                    all_runners_data.append(runner)
+                    runner_clean['official_rating'] = runner.get('official_rating', np.random.randint(70, 100))
+                    runner_clean['weight_lbs'] = runner.get('weight_lbs', np.random.randint(120, 140))
+                    runner_clean['age'] = pd.to_numeric(runner_clean.get('age'), errors='coerce')
+                    all_runners_data.append(runner_clean)
 
             except json.JSONDecodeError:
                 st.warning(f"La respuesta de la IA para {runner.get('horse')} no es un JSON válido. Saltando este caballo.")
@@ -199,7 +212,7 @@ def run_ai_analysis(race_data):
                 st.error(f"Error inesperado al procesar a {runner.get('horse')}: {e}. Saltando este caballo.")
             
             processed_runners += 1
-            progress_bar.progress(processed_runners / total_runners)
+            progress_bar.progress(processed_runners / total_runners if total_runners > 0 else 1)
             
             time.sleep(1.1) 
             
@@ -294,6 +307,7 @@ with tab1:
             with st.spinner("Analizando con IA y generando predicciones..."):
                 try:
                     enriched_runners = run_ai_analysis(st.session_state.race_data)
+                    st.success("Fase de análisis con IA completada.")
                     
                     if enriched_runners:
                         runners_df = pd.DataFrame(enriched_runners)
@@ -304,7 +318,6 @@ with tab1:
 
                         st.session_state.enriched_runners_df = runners_df
                         st.session_state.final_bets = generate_value_bets(runners_df)
-                        st.success("Análisis completado con éxito.")
                         st.rerun()
                     else:
                         st.warning("Análisis completado, pero no se pudieron procesar los datos de los corredores. Revisa los logs de errores si los hubiera.")
