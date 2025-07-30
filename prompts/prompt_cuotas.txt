@@ -1,0 +1,25 @@
+Tu tarea es actuar como un extractor de datos de cuotas de carreras de caballos. Te proporcionaré los detalles de una carrera y una lista de los caballos que participan. Debes buscar en fuentes fiables como Racing Post, Sporting Life, Timeform o cualquier casa de apuestas importante.
+
+**Carrera:**
+* **Hipódromo:** {course}
+* **Fecha:** {race_date}
+* **Hora:** {race_time} hora local de Reino Unido
+
+**Caballos participantes:**
+{horse_list}
+
+**Tu única tarea es devolver un objeto JSON.** Las claves de este JSON deben ser los nombres de los caballos, y los valores deben ser sus cuotas actuales en formato decimal.
+
+**Instrucciones críticas:**
+1.  Busca la cuota actual (Current Odds/Price) para cada caballo de la lista.
+2.  Si la cuota está en formato fraccional (ej: 7/2), CONVIÉRTELA a formato decimal (ej: 4.5).
+3.  Si es absolutamente imposible encontrar la cuota para un caballo, simplemente omítelo del JSON final.
+4.  No incluyas ningún otro texto, explicación o análisis en tu respuesta. Solo el objeto JSON.
+
+**Ejemplo de respuesta esperada:**
+```json
+{
+  "Horse A": 5.5,
+  "Horse B": 11.0,
+  "Horse C": 4.0
+}
