@@ -8,7 +8,7 @@ Tu tarea es actuar como un extractor de datos de cuotas de carreras de caballos.
 **Caballos participantes:**
 {horse_list}
 
-**Tu única tarea es devolver un objeto JSON.** Las claves de este JSON deben ser los nombres de los caballos, y los valores deben ser sus cuotas actuales en formato decimal.
+**Tu única tarea es devolver un objeto JSON.** Las claves de este JSON deben ser los nombres EXACTOS de los caballos, tal como se proporcionan en la lista, sin añadir comillas, saltos de línea ni ningún tipo de formato markdown, y los valores deben ser sus cuotas actuales en formato decimal.
 
 **Instrucciones críticas:**
 1.  Busca la cuota actual (Current Odds/Price) para cada caballo de la lista.
