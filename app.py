@@ -228,10 +228,9 @@ def generate_value_bets(runners_df):
     if model_pipeline is None: return []
     required_features = ['official_rating', 'age', 'weight_lbs', 'swot_balance_score', 'course', 'jockey_name', 'trainer_name', 'in_running_comment']
     
-    # Asegurarse de que el df tiene todas las columnas necesarias, si no, añadir con valor por defecto
     for col in required_features:
         if col not in runners_df.columns:
-            runners_df[col] = 0 # O un valor por defecto más apropiado
+            runners_df[col] = 0
             
     features_for_model = runners_df[required_features]
     
