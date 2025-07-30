@@ -131,13 +131,15 @@ def fetch_racing_data():
         st.error(f"Error al contactar TheRacingAPI: {e}")
         return []
 
+# --- CORREGIDO --- Se actualiza la forma de llamar a las herramientas de la API.
 def call_gemini_api(prompt):
     """Llama a la API de Gemini con búsqueda en vivo y devuelve la respuesta en formato JSON."""
     try:
         genai.configure(api_key=GEMINI_API_KEY)
         generation_config = {"response_mime_type": "application/json"}
         
-        tools = [genai.Tool(google_search_retrieval=genai.GoogleSearchRetrieval())]
+        # Forma correcta y moderna de habilitar la búsqueda en Google.
+        tools = ["google_search"]
         
         model = genai.GenerativeModel(
             model_name="gemini-1.5-pro-latest",
@@ -159,7 +161,6 @@ def call_gemini_api(prompt):
             st.error(f"Error al contactar la API de Gemini. Verifica tu API Key. Error: {e}")
         return "{}"
 
-# --- LÓGICA REESTRUCTURADA ---
 def fetch_market_odds(race_data, test_mode=False):
     """
     Obtiene las cuotas de mercado y devuelve un diccionario mapeando
@@ -201,9 +202,7 @@ def fetch_market_odds(race_data, test_mode=False):
                 clean_json_str = ai_response_str[json_start:json_end]
                 odds_data_from_ai = json.loads(clean_json_str)
                 
-                # Crear un mapeo robusto entre nombres de la API y cuotas de la IA
                 race_odds = {}
-                # Crear un mapa de nombres normalizados de la IA para una búsqueda eficiente
                 normalized_ai_map = {normalize_horse_name(name): odds for name, odds in odds_data_from_ai.items()}
 
                 for api_name in api_horse_names:
@@ -211,7 +210,6 @@ def fetch_market_odds(race_data, test_mode=False):
                     if normalized_api_name in normalized_ai_map:
                         race_odds[api_name] = float(normalized_ai_map[normalized_api_name])
                     else:
-                        # AÑADIMOS LOG DE DEPURACIÓN PARA VER QUÉ FALLA EXACTAMENTE
                         st.warning(f"No se encontró coincidencia para el caballo de la API: '{api_name}' (Normalizado: '{normalized_api_name}'). Nombres disponibles en la IA (normalizados): {list(normalized_ai_map.keys())}")
 
                 
@@ -262,7 +260,6 @@ def run_ai_analysis(race_data, market_odds_map, debug_mode=False, test_mode=Fals
                     except json.JSONDecodeError:
                         st.error("La respuesta de la IA no es un JSON válido.")
                         st.text(ai_response_str)
-        # CORRECCIÓN: El modo de depuración debe detener la ejecución para no causar errores.
         return None
 
     st.info("Iniciando análisis detallado con IA...")
@@ -289,7 +286,6 @@ def run_ai_analysis(race_data, market_odds_map, debug_mode=False, test_mode=Fals
                 runner_clean['jockey_name'] = runner_clean.pop('jockey', 'Unknown')
                 runner_clean['trainer_name'] = runner_clean.pop('trainer', 'Unknown')
                 
-                # --- BÚSQUEDA PRECISA --- Se busca la cuota por el nombre exacto de la API.
                 runner_clean['cuota_mercado'] = odds_for_this_race.get(runner_clean['horse'], 999.0)
 
                 runner_info = {
@@ -398,12 +394,11 @@ if not check_password():
 st.sidebar.success("Sesión iniciada con éxito.")
 st.sidebar.markdown("---")
 
-# --- NUEVO --- Botón para limpiar la caché manualmente
 if st.sidebar.button("Limpiar Caché y Recargar Prompts"):
     st.cache_data.clear()
     st.cache_resource.clear()
     st.success("Caché limpiada. Los prompts se recargarán en el próximo análisis.")
-    time.sleep(2) # Pausa para que el usuario lea el mensaje
+    time.sleep(2)
     st.rerun()
 
 st.sidebar.markdown("---") 
