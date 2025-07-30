@@ -148,14 +148,13 @@ def run_ai_analysis(race_data):
     """Itera sobre los corredores, los enriquece con datos de la IA y estandariza los campos."""
     st.info("Iniciando análisis con IA. Este proceso puede tardar varios minutos...")
     progress_bar = st.progress(0)
-    total_runners = sum(len(race.get('runners', [])) for race in race_data)
+    total_runners = sum(len(race.get('runners', [])) for race in race_data if race.get('runners'))
     processed_runners = 0
     all_runners_data = []
 
     for race in race_data:
-        # Comprobación de seguridad: si la carrera no tiene corredores, la saltamos.
-        if not race.get('runners'):
-            st.warning(f"La carrera en {race.get('course', 'N/A')} a las {race.get('off_time', 'N/A')} no tiene corredores y será ignorada.")
+        if not isinstance(race.get('runners'), list):
+            st.warning(f"Datos de carrera inválidos para {race.get('course', 'N/A')} a las {race.get('off_time', 'N/A')}. Saltando esta carrera.")
             continue
 
         for runner in race.get('runners', []):
@@ -303,10 +302,13 @@ with tab1:
     
     with col_b:
         is_disabled = 'race_data' not in st.session_state
+        test_mode = st.checkbox("Modo de prueba (analizar solo las primeras 4 carreras)", value=False, disabled=is_disabled)
+        
         if st.button("Paso 2: Analizar y Generar Apuestas", use_container_width=True, disabled=is_disabled):
             with st.spinner("Analizando con IA y generando predicciones..."):
                 try:
-                    enriched_runners = run_ai_analysis(st.session_state.race_data)
+                    data_to_analyze = st.session_state.race_data[:4] if test_mode else st.session_state.race_data
+                    enriched_runners = run_ai_analysis(data_to_analyze)
                     st.success("Fase de análisis con IA completada.")
                     
                     if enriched_runners:
