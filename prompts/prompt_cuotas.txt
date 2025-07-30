@@ -19,7 +19,7 @@ Tu tarea es actuar como un extractor de datos de cuotas de carreras de caballos.
 **Ejemplo de respuesta esperada:**
 ```json
 {
-  "Horse A": 5.5,
-  "Horse B": 11.0,
-  "Horse C": 4.0
+  "Horse_A": 5.5,
+  "Horse_B": 11.0,
+  "Horse_C": 4.0
 }
