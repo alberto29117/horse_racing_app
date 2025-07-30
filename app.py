@@ -210,6 +210,10 @@ def fetch_market_odds(race_data, test_mode=False):
                     normalized_api_name = normalize_horse_name(api_name)
                     if normalized_api_name in normalized_ai_map:
                         race_odds[api_name] = float(normalized_ai_map[normalized_api_name])
+                    else:
+                        # AÑADIMOS LOG DE DEPURACIÓN PARA VER QUÉ FALLA EXACTAMENTE
+                        st.warning(f"No se encontró coincidencia para el caballo de la API: '{api_name}' (Normalizado: '{normalized_api_name}'). Nombres disponibles en la IA (normalizados): {list(normalized_ai_map.keys())}")
+
                 
                 if race_odds:
                     race_odds_map[race_key] = race_odds
@@ -232,7 +236,33 @@ def run_ai_analysis(race_data, market_odds_map, debug_mode=False, test_mode=Fals
     data_to_process = race_data[:4] if test_mode else race_data
 
     if debug_mode or debug_json:
-        # Lógica de depuración sin cambios...
+        st.info("--- MODO DEPURACIÓN ACTIVADO ---")
+        if data_to_process and data_to_process[0].get('runners'):
+            race = data_to_process[0]
+            runner = race['runners'][0]
+            
+            runner_info = {
+                'horse_name': runner.get('horse', 'N/A'), 'jockey_name': runner.get('jockey', 'N/A'),
+                'trainer_name': runner.get('trainer', 'N/A'), 'course': race.get('course', 'N/A'),
+                'race_date': race.get('date', 'N/A'), 'race_time': race.get('off_time', 'N/A')
+            }
+            
+            prompt_caballo = PROMPT_TEMPLATES["caballo"].format(**runner_info)
+            
+            if debug_mode:
+                st.subheader("Prompt que se enviaría a la IA (Depuración):")
+                st.text_area("Prompt para el primer caballo:", prompt_caballo, height=400)
+            
+            if debug_json:
+                st.subheader("Respuesta JSON de la IA (Depuración):")
+                with st.spinner("Obteniendo respuesta de la IA para el primer caballo..."):
+                    ai_response_str = call_gemini_api(prompt_caballo)
+                    try:
+                        st.json(json.loads(ai_response_str))
+                    except json.JSONDecodeError:
+                        st.error("La respuesta de la IA no es un JSON válido.")
+                        st.text(ai_response_str)
+        # CORRECCIÓN: El modo de depuración debe detener la ejecución para no causar errores.
         return None
 
     st.info("Iniciando análisis detallado con IA...")
