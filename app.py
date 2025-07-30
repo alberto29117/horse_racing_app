@@ -149,7 +149,6 @@ def call_gemini_api(prompt):
             st.error(f"Error al contactar la API de Gemini. Verifica tu API Key. Error: {e}")
         return "{}"
 
-# --- CORREGIDO --- Se añade lógica para limpiar la respuesta JSON.
 def fetch_market_odds(race_data, test_mode=False):
     """
     Itera sobre las carreras, obtiene las cuotas de mercado para todos los caballos
@@ -185,16 +184,18 @@ def fetch_market_odds(race_data, test_mode=False):
         try:
             ai_response_str = call_gemini_api(prompt)
             
-            # --- CORRECCIÓN --- Limpiar la cadena de respuesta para extraer solo el JSON.
             json_start = ai_response_str.find('{')
             json_end = ai_response_str.rfind('}') + 1
             if json_start != -1 and json_end > json_start:
                 clean_json_str = ai_response_str[json_start:json_end]
                 odds_data = json.loads(clean_json_str)
                 
-                # Guardamos las cuotas con una clave única por carrera y caballo
                 for horse_name, odds in odds_data.items():
-                    key = (race_info['course'], race_info['race_time'], horse_name)
+                    # --- CORRECCIÓN --- Limpiar el nombre del caballo (la clave del JSON) para
+                    # asegurar que coincida con los datos de TheRacingAPI.
+                    clean_horse_name = horse_name.strip().strip('"')
+                    
+                    key = (race_info['course'], race_info['race_time'], clean_horse_name)
                     all_odds[key] = float(odds)
             else:
                 st.warning(f"No se encontró un JSON válido en la respuesta de cuotas para la carrera en {race_info['course']}.")
@@ -206,18 +207,16 @@ def fetch_market_odds(race_data, test_mode=False):
             st.error(f"Error obteniendo cuotas para {race_info['course']}: {e}")
         
         progress_bar.progress((i + 1) / total_races)
-        time.sleep(1.1) # Respetar límites de la API
+        time.sleep(1.1)
 
     st.success("Obtención de cuotas de mercado completada.")
     return all_odds
 
-# --- CORREGIDO --- Se añade lógica para limpiar la respuesta JSON.
 def run_ai_analysis(race_data, market_odds, debug_mode=False, test_mode=False, debug_json=False):
     """Itera sobre los corredores, los enriquece con datos de la IA y estandariza los campos."""
     
     data_to_process = race_data[:4] if test_mode else race_data
 
-    # --- Lógica de Depuración (sin cambios) ---
     if debug_mode or debug_json:
         st.info("--- MODO DEPURACIÓN ACTIVADO ---")
         if data_to_process and data_to_process[0].get('runners'):
@@ -251,7 +250,6 @@ def run_ai_analysis(race_data, market_odds, debug_mode=False, test_mode=False, d
             st.error("No se encontraron datos de carreras o corredores para depurar.")
             return None
 
-    # --- Flujo normal de análisis ---
     st.info("Iniciando análisis detallado con IA. Este proceso puede tardar varios minutos...")
     progress_bar = st.progress(0)
     total_runners = sum(len(race.get('runners', [])) for race in data_to_process if race.get('runners'))
@@ -287,7 +285,6 @@ def run_ai_analysis(race_data, market_odds, debug_mode=False, test_mode=False, d
                 ai_response_str = call_gemini_api(prompt_caballo)
                 
                 if ai_response_str:
-                    # --- CORRECCIÓN --- Limpiar la cadena de respuesta para extraer solo el JSON.
                     json_start = ai_response_str.find('{')
                     json_end = ai_response_str.rfind('}') + 1
                     if json_start != -1 and json_end > json_start:
