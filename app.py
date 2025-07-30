@@ -121,17 +121,16 @@ def fetch_racing_data():
         return []
 
 def call_gemini_api(prompt):
-    """Llama a la API de Gemini con búsqueda en vivo y devuelve la respuesta en formato JSON."""
+    """Llama a la API de Gemini y devuelve la respuesta en formato JSON."""
     try:
         genai.configure(api_key=GEMINI_API_KEY)
         generation_config = {"response_mime_type": "application/json"}
         
-        tools = [genai.Tool(google_search_retrieval=genai.GoogleSearchRetrieval())]
-        
+        # CORRECCIÓN: Se elimina la herramienta de búsqueda 'genai.Tool' para asegurar la compatibilidad
+        # con la versión de la librería instalada en el entorno de ejecución.
         model = genai.GenerativeModel(
             model_name="gemini-1.5-pro-latest",
-            generation_config=generation_config,
-            tools=tools
+            generation_config=generation_config
         )
         response = model.generate_content(prompt)
         return response.text
