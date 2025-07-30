@@ -59,7 +59,6 @@ PROMPT_TEMPLATES = {
     "jockey": load_prompt_from_github("prompt_jockey.txt"),
     "entrenador": load_prompt_from_github("prompt_entrenador.txt"),
     "sinergia": load_prompt_from_github("prompt_sinergia.txt"),
-    # --- NUEVO --- Añadimos la plantilla para obtener las cuotas.
     "cuotas": load_prompt_from_github("prompt_cuotas.txt"),
 }
 
@@ -150,7 +149,7 @@ def call_gemini_api(prompt):
             st.error(f"Error al contactar la API de Gemini. Verifica tu API Key. Error: {e}")
         return "{}"
 
-# --- NUEVO --- Función para obtener las cuotas de mercado como primer paso.
+# --- CORREGIDO --- Se añade lógica para limpiar la respuesta JSON.
 def fetch_market_odds(race_data, test_mode=False):
     """
     Itera sobre las carreras, obtiene las cuotas de mercado para todos los caballos
@@ -185,15 +184,24 @@ def fetch_market_odds(race_data, test_mode=False):
         
         try:
             ai_response_str = call_gemini_api(prompt)
-            odds_data = json.loads(ai_response_str)
             
-            # Guardamos las cuotas con una clave única por carrera y caballo
-            for horse_name, odds in odds_data.items():
-                key = (race_info['course'], race_info['race_time'], horse_name)
-                all_odds[key] = float(odds)
+            # --- CORRECCIÓN --- Limpiar la cadena de respuesta para extraer solo el JSON.
+            json_start = ai_response_str.find('{')
+            json_end = ai_response_str.rfind('}') + 1
+            if json_start != -1 and json_end > json_start:
+                clean_json_str = ai_response_str[json_start:json_end]
+                odds_data = json.loads(clean_json_str)
+                
+                # Guardamos las cuotas con una clave única por carrera y caballo
+                for horse_name, odds in odds_data.items():
+                    key = (race_info['course'], race_info['race_time'], horse_name)
+                    all_odds[key] = float(odds)
+            else:
+                st.warning(f"No se encontró un JSON válido en la respuesta de cuotas para la carrera en {race_info['course']}.")
 
         except json.JSONDecodeError:
             st.warning(f"No se pudo decodificar la respuesta JSON de las cuotas para la carrera en {race_info['course']} a las {race_info['race_time']}.")
+            st.text_area("Respuesta recibida (con error):", ai_response_str)
         except Exception as e:
             st.error(f"Error obteniendo cuotas para {race_info['course']}: {e}")
         
@@ -203,7 +211,7 @@ def fetch_market_odds(race_data, test_mode=False):
     st.success("Obtención de cuotas de mercado completada.")
     return all_odds
 
-# --- MODIFICADO --- La función ahora recibe las cuotas de mercado.
+# --- CORREGIDO --- Se añade lógica para limpiar la respuesta JSON.
 def run_ai_analysis(race_data, market_odds, debug_mode=False, test_mode=False, debug_json=False):
     """Itera sobre los corredores, los enriquece con datos de la IA y estandariza los campos."""
     
@@ -266,9 +274,8 @@ def run_ai_analysis(race_data, market_odds, debug_mode=False, test_mode=False, d
                 runner_clean['jockey_name'] = runner_clean.pop('jockey', 'Unknown')
                 runner_clean['trainer_name'] = runner_clean.pop('trainer', 'Unknown')
                 
-                # --- MODIFICADO --- Usamos las cuotas obtenidas en el paso previo.
                 key = (runner_clean['course'], runner_clean['off_time'], runner_clean['horse'])
-                runner_clean['cuota_mercado'] = market_odds.get(key, 999.0) # 999.0 como fallback
+                runner_clean['cuota_mercado'] = market_odds.get(key, 999.0)
 
                 runner_info = {
                     'horse_name': runner_clean.get('horse', 'N/A'), 'jockey_name': runner_clean.get('jockey_name', 'N/A'),
@@ -280,24 +287,34 @@ def run_ai_analysis(race_data, market_odds, debug_mode=False, test_mode=False, d
                 ai_response_str = call_gemini_api(prompt_caballo)
                 
                 if ai_response_str:
-                    ai_data = json.loads(ai_response_str)
-                    perfil_data = ai_data.get('perfil') or {}
-                    synergy_data = ai_data.get('synergy_analysis') or {}
-                    analisis_forma_list = ai_data.get('analisis_forma') or []
-                    
-                    # La cuota de mercado ya la tenemos, esta parte se simplifica.
-                    runner_clean['swot_balance_score'] = synergy_data.get('swot_balance_score', 0)
-                    
-                    if analisis_forma_list:
-                        runner_clean['in_running_comment'] = analisis_forma_list[0].get('comentario_in_running', '')
+                    # --- CORRECCIÓN --- Limpiar la cadena de respuesta para extraer solo el JSON.
+                    json_start = ai_response_str.find('{')
+                    json_end = ai_response_str.rfind('}') + 1
+                    if json_start != -1 and json_end > json_start:
+                        clean_json_str = ai_response_str[json_start:json_end]
+                        ai_data = json.loads(clean_json_str)
+                        
+                        perfil_data = ai_data.get('perfil') or {}
+                        synergy_data = ai_data.get('synergy_analysis') or {}
+                        analisis_forma_list = ai_data.get('analisis_forma') or []
+                        
+                        runner_clean['swot_balance_score'] = synergy_data.get('swot_balance_score', 0)
+                        
+                        if analisis_forma_list:
+                            runner_clean['in_running_comment'] = analisis_forma_list[0].get('comentario_in_running', '')
+                        else:
+                            runner_clean['in_running_comment'] = ''
+
+                        runner_clean['official_rating'] = runner.get('official_rating', np.random.randint(70, 100))
+                        runner_clean['weight_lbs'] = runner.get('weight_lbs', np.random.randint(120, 140))
+                        runner_clean['age'] = pd.to_numeric(runner_clean.get('age'), errors='coerce')
+                        all_runners_data.append(runner_clean)
                     else:
-                        runner_clean['in_running_comment'] = ''
+                        st.warning(f"No se encontró un JSON válido en el análisis para {runner_clean['horse']}.")
 
-                    runner_clean['official_rating'] = runner.get('official_rating', np.random.randint(70, 100))
-                    runner_clean['weight_lbs'] = runner.get('weight_lbs', np.random.randint(120, 140))
-                    runner_clean['age'] = pd.to_numeric(runner_clean.get('age'), errors='coerce')
-                    all_runners_data.append(runner_clean)
-
+            except json.JSONDecodeError:
+                st.warning(f"No se pudo decodificar el JSON para {runner.get('horse')}.")
+                st.text_area("Respuesta recibida (con error):", ai_response_str)
             except Exception as e:
                 st.error(f"Error inesperado al procesar a {runner.get('horse')}: {e}. Saltando este caballo.")
             
@@ -391,16 +408,13 @@ with tab1:
         debug_mode = st.checkbox("Depurar Prompt", value=False, disabled=is_disabled)
         debug_json = st.checkbox("Depurar Respuesta JSON", value=False, disabled=is_disabled)
         
-        # --- MODIFICADO --- Lógica del botón de análisis actualizada.
         if st.button("Paso 2: Analizar y Generar Apuestas", use_container_width=True, disabled=is_disabled):
             try:
-                # Paso 2.1: Obtener cuotas de mercado primero
                 market_odds = fetch_market_odds(st.session_state.race_data, test_mode=test_mode)
                 
                 if not market_odds:
                     st.warning("No se pudieron obtener las cuotas de mercado. El análisis detallado podría ser menos preciso.")
                 
-                # Paso 2.2: Ejecutar el análisis detallado con las cuotas ya obtenidas
                 enriched_runners = run_ai_analysis(st.session_state.race_data, market_odds, debug_mode=debug_mode, test_mode=test_mode, debug_json=debug_json)
                 
                 if enriched_runners is not None:
