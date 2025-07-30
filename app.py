@@ -9,6 +9,7 @@ import numpy as np
 from sqlalchemy import create_engine
 import google.generativeai as genai
 from datetime import date, timedelta
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
 # --- CONFIGURACIÓN INICIAL Y CONEXIONES ---
 
@@ -120,11 +121,18 @@ def fetch_racing_data():
         return []
 
 def call_gemini_api(prompt):
-    """Llama a la API de Gemini y devuelve la respuesta en formato JSON."""
+    """Llama a la API de Gemini con búsqueda en vivo y devuelve la respuesta en formato JSON."""
     try:
         genai.configure(api_key=GEMINI_API_KEY)
         generation_config = {"response_mime_type": "application/json"}
-        model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest", generation_config=generation_config)
+        
+        tools = [genai.Tool(google_search_retrieval=genai.GoogleSearchRetrieval())]
+        
+        model = genai.GenerativeModel(
+            model_name="gemini-1.5-pro-latest",
+            generation_config=generation_config,
+            tools=tools
+        )
         response = model.generate_content(prompt)
         return response.text
     except Exception as e:
@@ -134,29 +142,40 @@ def call_gemini_api(prompt):
             st.error(f"Error al contactar la API de Gemini. Verifica tu API Key. Error: {e}")
         return "{}"
 
-def run_ai_analysis(race_data, debug_mode=False, test_mode=False):
+def run_ai_analysis(race_data, debug_mode=False, test_mode=False, debug_json=False):
     """Itera sobre los corredores, los enriquece con datos de la IA y estandariza los campos."""
     
     data_to_process = race_data[:4] if test_mode else race_data
 
-    if debug_mode:
+    # --- Lógica de Depuración ---
+    if debug_mode or debug_json:
         st.info("--- MODO DEPURACIÓN ACTIVADO ---")
         if data_to_process and data_to_process[0].get('runners'):
             race = data_to_process[0]
             runner = race['runners'][0]
             
             runner_info = {
-                'horse_name': runner.get('horse', 'N/A'),
-                'jockey_name': runner.get('jockey', 'N/A'),
-                'trainer_name': runner.get('trainer', 'N/A'),
-                'course': race.get('course', 'N/A'),
-                'race_date': race.get('date', 'N/A'),
-                'race_time': race.get('off_time', 'N/A')
+                'horse_name': runner.get('horse', 'N/A'), 'jockey_name': runner.get('jockey', 'N/A'),
+                'trainer_name': runner.get('trainer', 'N/A'), 'course': race.get('course', 'N/A'),
+                'race_date': race.get('date', 'N/A'), 'race_time': race.get('off_time', 'N/A')
             }
             
             prompt_caballo = PROMPT_TEMPLATES["caballo"].format(**runner_info)
-            st.subheader("Prompt que se enviaría a la IA (Depuración):")
-            st.text_area("Prompt para el primer caballo:", prompt_caballo, height=400)
+            
+            if debug_mode:
+                st.subheader("Prompt que se enviaría a la IA (Depuración):")
+                st.text_area("Prompt para el primer caballo:", prompt_caballo, height=400)
+            
+            if debug_json:
+                st.subheader("Respuesta JSON de la IA (Depuración):")
+                with st.spinner("Obteniendo respuesta de la IA para el primer caballo..."):
+                    ai_response_str = call_gemini_api(prompt_caballo)
+                    try:
+                        st.json(json.loads(ai_response_str))
+                    except json.JSONDecodeError:
+                        st.error("La respuesta de la IA no es un JSON válido.")
+                        st.text(ai_response_str)
+
             return None 
         else:
             st.error("No se encontraron datos de carreras o corredores para depurar.")
@@ -305,12 +324,13 @@ with tab1:
     with col_b:
         is_disabled = 'race_data' not in st.session_state
         test_mode = st.checkbox("Modo de prueba (primeras 4 carreras)", value=False, disabled=is_disabled)
-        debug_mode = st.checkbox("Modo Depuración (mostrar prompt)", value=False, disabled=is_disabled)
+        debug_mode = st.checkbox("Depurar Prompt", value=False, disabled=is_disabled)
+        debug_json = st.checkbox("Depurar Respuesta JSON", value=False, disabled=is_disabled)
         
         if st.button("Paso 2: Analizar y Generar Apuestas", use_container_width=True, disabled=is_disabled):
             with st.spinner("Analizando con IA y generando predicciones..."):
                 try:
-                    enriched_runners = run_ai_analysis(st.session_state.race_data, debug_mode=debug_mode, test_mode=test_mode)
+                    enriched_runners = run_ai_analysis(st.session_state.race_data, debug_mode=debug_mode, test_mode=test_mode, debug_json=debug_json)
                     
                     if enriched_runners is not None:
                         st.success("Fase de análisis con IA completada.")
